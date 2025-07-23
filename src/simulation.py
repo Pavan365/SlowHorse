@@ -3,7 +3,7 @@ Classes for setting up simulations.
 """
 
 # Import standard modules.
-from typing import TypeAlias
+from typing import Callable, Optional, TypeAlias
 
 # Import external modules.
 import numpy as np
@@ -44,6 +44,7 @@ class HilbertSpace1D:
 
     def __init__(self, x_min: float, x_max: float, num_points: int) -> None:
         """
+        Initialises an instance of the HilbertSpace1D class.
 
         Parameters
         ----------
@@ -63,3 +64,50 @@ class HilbertSpace1D:
         # Define the discretised x-axis grid.
         self.x_axis: RVector = np.linspace(x_min, x_max, num_points, dtype=np.float64)
         self.x_dx: float = self.x_axis[1] - self.x_axis[0]
+
+
+# Type aliases for time-dependent Schrödinger equation terms.
+HamiltonianTI: TypeAlias = Callable[[HilbertSpace1D], GMatrix]
+HamiltonianTD: TypeAlias = Callable[[HilbertSpace1D, float], GMatrix]
+InhomogeneousTerm: TypeAlias = Callable[[HilbertSpace1D, float], GMatrix]
+
+
+class TDSE1D:
+    """
+    Represents a time-dependent Schrödinger equation in 1 dimension.
+
+    Attributes
+    ----------
+    hamiltonian_ti: Optional[HamiltonianTI]
+        A function that returns a Hamiltonian term that is time-independent.
+    hamiltonian_td: Optional[HamiltonianTD]
+        A function that returns a Hamiltonian term that is time-dependent.
+    inhomogeneous_term: Optional[InhomogeneousTerm]
+        A function that returns an inhomogeneous term.
+    """
+
+    def __init__(
+        self,
+        hamiltonian_ti: Optional[HamiltonianTI] = None,
+        hamiltonian_td: Optional[HamiltonianTD] = None,
+        inhomogeneous_term: Optional[InhomogeneousTerm] = None,
+    ) -> None:
+        """
+        Initialises an instance of the TDSE1D class.
+
+        Parameters
+        ----------
+        hamiltonian_ti: Optional[HamiltonianTI]
+            A function that returns a Hamiltonian term that is time-independent.
+        hamiltonian_td: Optional[HamiltonianTD]
+            A function that returns a Hamiltonian term that is time-dependent.
+        inhomogeneous_term: Optional[InhomogeneousTerm]
+            A function that returns an inhomogeneous term.
+        """
+
+        if hamiltonian_ti is None and hamiltonian_td is None:
+            raise ValueError("a Hamiltonian function must be provided")
+
+        self.hamiltonian_ti: Optional[HamiltonianTI] = hamiltonian_ti
+        self.hamiltonian_td: Optional[HamiltonianTD] = hamiltonian_td
+        self.inhomogeneous_term: Optional[InhomogeneousTerm] = inhomogeneous_term
