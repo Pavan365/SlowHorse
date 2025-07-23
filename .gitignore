@@ -4,5 +4,6 @@ __pycache__/
 # Ignore VS Code settings.
 .vscode/
 
-# Ignore examples folder.
+# Ignore examples & tests folder.
 examples/
+tests/
