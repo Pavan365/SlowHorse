@@ -3,6 +3,7 @@ Classes for setting up simulations.
 """
 
 # Import standard modules.
+from enum import Enum
 from typing import Callable, Optional, TypeAlias
 
 # Import external modules.
@@ -69,7 +70,7 @@ class HilbertSpace1D:
 # Type aliases for time-dependent Schrödinger equation terms.
 HamiltonianTI: TypeAlias = Callable[[HilbertSpace1D], GMatrix]
 HamiltonianTD: TypeAlias = Callable[[HilbertSpace1D, float], GMatrix]
-InhomogeneousTerm: TypeAlias = Callable[[HilbertSpace1D, float], GMatrix]
+InhomogeneousTerm: TypeAlias = Callable[[HilbertSpace1D, float], GVector]
 
 
 class TDSE1D:
