@@ -2,9 +2,26 @@
 Classes for setting up simulations.
 """
 
+# Import standard modules.
+from typing import TypeAlias
+
 # Import external modules.
 import numpy as np
 from numpy.typing import NDArray
+
+# Generalised type aliases for matrices, vectors and collections of vectors.
+# G -> General, R -> Real, C -> Complex.
+GMatrix: TypeAlias = NDArray[np.float64] | NDArray[np.complex128]
+RMatrix: TypeAlias = NDArray[np.float64]
+CMatrix: TypeAlias = NDArray[np.complex128]
+
+GVector: TypeAlias = NDArray[np.float64] | NDArray[np.complex128]
+RVector: TypeAlias = NDArray[np.float64]
+CVector: TypeAlias = NDArray[np.complex128]
+
+GVectors: TypeAlias = NDArray[np.float64] | NDArray[np.complex128]
+RVectors: TypeAlias = NDArray[np.float64]
+CVectors: TypeAlias = NDArray[np.complex128]
 
 
 class HilbertSpace1D:
@@ -19,7 +36,7 @@ class HilbertSpace1D:
         The maximum x-axis value.
     num_points: int
         The number of sampling points for the discretised x-axis grid.
-    x_axis: NDArray[np.float64]
+    x_axis: RVector
         The discretised x-axis grid.
     x_dx: float
         The discretised x-axis grid spacing.
@@ -44,7 +61,5 @@ class HilbertSpace1D:
         self.num_points: int = num_points
 
         # Define the discretised x-axis grid.
-        self.x_axis: NDArray[np.float64] = np.linspace(
-            x_min, x_max, num_points, dtype=np.float64
-        )
+        self.x_axis: RVector = np.linspace(x_min, x_max, num_points, dtype=np.float64)
         self.x_dx: float = self.x_axis[1] - self.x_axis[0]
