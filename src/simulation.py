@@ -3,7 +3,6 @@ Classes for setting up simulations.
 """
 
 # Import standard modules.
-from enum import Enum
 from typing import Callable, Optional, TypeAlias
 
 # Import external modules.
@@ -109,6 +108,49 @@ class TDSE1D:
         if hamiltonian_ti is None and hamiltonian_td is None:
             raise ValueError("a Hamiltonian function must be provided")
 
+        # Assign attributes.
         self.hamiltonian_ti: Optional[HamiltonianTI] = hamiltonian_ti
         self.hamiltonian_td: Optional[HamiltonianTD] = hamiltonian_td
         self.inhomogeneous_term: Optional[InhomogeneousTerm] = inhomogeneous_term
+
+
+class TimeGrid:
+    """
+    Represents a discretised time interval.
+
+    Attributes
+    ----------
+    t_min: float
+        The minimum time-axis value.
+    t_max: float
+        The maximum time-axis value.
+    num_points: int
+        The number of sampling points for the discretised time-axis grid.
+    t_axis: RVector
+        The discretised time-axis grid.
+    t_dt: float
+        The discretised time-axis grid spacing.
+    """
+
+    def __init__(self, t_min: float, t_max: float, num_points: int) -> None:
+        """
+        Initialises an instance of the TimeGrid class.
+
+        Parameters
+        ----------
+        t_min: float
+            The minimum time-axis value.
+        t_max: float
+            The maximum time-axis value.
+        num_points: int
+            The number of sampling points for the discretised time-axis grid.
+        """
+
+        # Assign attributes.
+        self.t_min: float = t_min
+        self.t_max: float = t_max
+        self.num_points: int = num_points
+
+        # Define the discretised time-axis grid.
+        self.t_axis: RVector = np.linspace(t_min, t_max, num_points, dtype=np.float64)
+        self.t_dt: float = self.t_axis[1] - self.t_axis[0]
