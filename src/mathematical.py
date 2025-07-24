@@ -52,7 +52,7 @@ def ch_coefficients(
         raise ValueError("invalid DCT type")
 
     # Store the number of expansion terms.
-    expansion_order = function_values.shape[0]
+    order: int = function_values.shape[0]
 
     # Perform the discrete cosine transform (DCT).
     coefficients: sim.GVector | sim.GVector = np.asarray(
@@ -61,16 +61,62 @@ def ch_coefficients(
 
     # Normalisation for DCT-I.
     if type == 1:
-        coefficients /= expansion_order - 1
+        coefficients /= order - 1
         coefficients[0] /= 2
         coefficients[-1] /= 2
 
     # Normalisation for DCT-II.
     elif type == 2:
-        coefficients /= expansion_order
+        coefficients /= order
         coefficients[0] /= 2
 
     return coefficients
+
+
+def ch_expansion(
+    operator: sim.GMatrix, ket: sim.GVector, coefficients: sim.GVector
+) -> sim.GVector:
+    """
+    Calculates the Chebyshev expansion of an operator through the recursion
+    relation for the Chebyshev polynomials of the first kind. The number of
+    expansion terms is taken to be the number of coefficients.
+
+    Parameters
+    ----------
+    operator: simulation.GMatrix
+        The operator being expanded (e.g. Hamiltonian). The eigenvalue domain
+        of the operator should be in the interval [-1, 1].
+    ket: simulation.GVector
+        The ket (e.g. wavefunction) being acted upon by the operator.
+    coefficients: simulation.GVector
+        The Chebyshev expansion coefficients. The coefficients are expected to
+        be the cosine transformed values of values generated from evaluating a
+        function of the operator on Chebyshev-Gauss or Chebyshev-Lobatto nodes.
+    """
+
+    # Store the number of expansion terms.
+    order: int = coefficients.shape[0]
+
+    # Calculate the first two Chebyshev expansion polynomials.
+    polynomial_minus_2: sim.GVector = ket.copy()
+    polynomial_minus_1: sim.GVector = operator @ ket
+
+    # Construct the starting expansion term.
+    expansion: sim.GVector = (coefficients[0] * polynomial_minus_2) + (
+        coefficients[1] * polynomial_minus_1
+    )
+
+    # Construct the complete expansion.
+    for i in range(2, order):
+        polynomial_n: sim.GVector = (
+            2 * (operator @ polynomial_minus_1)
+        ) - polynomial_minus_2
+        expansion += coefficients[i] * polynomial_n
+
+        polynomial_minus_2: sim.GVector = polynomial_minus_1
+        polynomial_minus_1: sim.GVector = polynomial_n
+
+    return expansion
 
 
 def ch_gauss_nodes(num_nodes: int) -> sim.RVector:
