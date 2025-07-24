@@ -62,3 +62,44 @@ def rescale_matrix(
     )
 
     return matrix_rs, scale, shift
+
+
+def rescale_vector(
+    vector: sim.RVector, a: float, b: float
+) -> tuple[sim.RVector, float, float]:
+    """
+    Rescales the domain of a real vector to the interval [a, b] using an affine
+    transformation. This function also returns the factors used to perform the
+    affine transformation.
+
+    Parameters
+    ----------
+    vector: simulation.RVector
+        The real vector to rescale.
+    a: float
+        The lower bound of the target interval.
+    b: float
+        The upper bound of the target interval.
+
+    Returns
+    -------
+    vector_rs: simulation.RVector
+        The rescaled real vector.
+    scale: float
+        The scale factor used in the affine transformation.
+    shift: float
+        The shift factor used in the affine transformation.
+    """
+
+    # Get the domain of the vector.
+    vector_min: float = np.min(vector)
+    vector_max: float = np.max(vector)
+
+    # Calculate the scale and shift factors for the affine transformation.
+    scale: float = (b - a) / (vector_max - vector_min)
+    shift: float = ((a * vector_max) - (b * vector_min)) / (vector_max - vector_min)
+
+    # Rescale the vector.
+    vector_rs: sim.RVector = (scale * vector) + shift
+
+    return vector_rs, scale, shift
