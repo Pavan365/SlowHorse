@@ -9,11 +9,48 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 # Import external modules.
+import matplotlib.pyplot as plt
 import numpy as np
 
 # Import local modules.
 import mathematical as math
 import simulation as sim
+
+
+def test_ch_gauss_nodes() -> None:
+    """
+    Test that the "ch_gauss_nodes" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ch_gauss_nodes")
+    print("------------------------------------------------")
+
+    # Check that the Chebyshev-Gauss nodes are generated as expected.
+    num_nodes: int = 20
+    nodes: sim.RVector = math.ch_gauss_nodes(num_nodes)
+
+    print(nodes)
+
+    plt.plot(nodes)
+    plt.show()
+
+
+def test_ch_lobatto_nodes() -> None:
+    """
+    Test that the "ch_lobatto_nodes" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ch_lobatto_nodes")
+    print("--------------------------------------------------")
+
+    # Check that the Chebyshev-Lobatto nodes are generated as expected.
+    num_nodes: int = 20
+    nodes: sim.RVector = math.ch_lobatto_nodes(num_nodes)
+
+    print(nodes)
+
+    plt.plot(nodes)
+    plt.show()
 
 
 def test_rescale_matrix() -> None:
@@ -80,5 +117,7 @@ def test_rescale_vector() -> None:
 
 if __name__ == "__main__":
     # Run test cases.
+    test_ch_gauss_nodes()
+    test_ch_lobatto_nodes()
     test_rescale_matrix()
     test_rescale_vector()
