@@ -21,8 +21,11 @@ def test_rescale_matrix() -> None:
     Test that the "rescale_matrix" function performs as expected.
     """
 
+    print("Function Tested: src.mathematical.rescale_matrix")
+    print("------------------------------------------------")
+
     # Construct a simple matrix.
-    diagonal: sim.RVector = np.linspace(-200, 200, 100, dtype=np.float64)
+    diagonal: sim.RVector = np.linspace(-200, 200, 20, dtype=np.float64)
     matrix: sim.RMatrix = np.diag(diagonal)
 
     # Define the target interval.
@@ -46,6 +49,36 @@ def test_rescale_matrix() -> None:
     assert np.allclose(matrix, matrix_original)
 
 
+def test_rescale_vector() -> None:
+    """
+    Test that the "rescale_vector" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.rescale_vector")
+    print("------------------------------------------------")
+
+    # Construct a simple vector.
+    vector: sim.RVector = np.linspace(-200, 200, 20, dtype=np.float64)
+
+    # Define the target interval.
+    a: float = -1.0
+    b: float = 1.0
+
+    # Rescale the domain of the vector.
+    vector_rs, scale, shift = math.rescale_vector(vector, a, b)
+
+    # Check that the rescaled vector is as expected.
+    print(vector_rs)
+
+    assert np.isclose(np.min(vector_rs), a)
+    assert np.isclose(np.max(vector_rs), b)
+
+    # Check that the scale and shift factors perform the correct inverse transformation.
+    vector_original: sim.RVector = (vector_rs - shift) / scale
+    assert np.allclose(vector, vector_original)
+
+
 if __name__ == "__main__":
     # Run test cases.
     test_rescale_matrix()
+    test_rescale_vector()
