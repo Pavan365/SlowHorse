@@ -11,10 +11,96 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "s
 # Import external modules.
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.typing import NDArray
 
 # Import local modules.
 import mathematical as math
 import simulation as sim
+
+
+def test_ch_coefficients() -> None:
+    """
+    Test that the "ch_coefficients" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ch_coefficients")
+    print("-------------------------------------------------")
+
+    # Define a known function.
+    def function(x: sim.RVector) -> sim.RVector:
+        return x**2
+
+    # Define the Chebyshev expansion.
+    def ch_expansion(nodes: sim.RVector, coefficients: sim.RVector) -> sim.RVector:
+        order: int = coefficients.shape[0]
+
+        polynomial_minus_2: sim.RVector = np.ones(order, dtype=np.float64)
+        polynomial_minus_1: sim.RVector = nodes.copy()
+
+        expansion: sim.RVector = (coefficients[0] * polynomial_minus_2) + (
+            coefficients[1] * polynomial_minus_1
+        )
+
+        for i in range(2, order):
+            polynomial_n: sim.RVector = (
+                2 * nodes * polynomial_minus_1
+            ) - polynomial_minus_2
+            expansion += coefficients[i] * polynomial_n
+
+            polynomial_minus_2: sim.RVector = polynomial_minus_1
+            polynomial_minus_1: sim.RVector = polynomial_n
+
+        return expansion
+
+    # Construct the exact solution.
+    x_axis: sim.RVector = np.linspace(-1, 1, 100, dtype=np.float64)
+    function_exact: sim.RVector = function(x_axis)
+
+    # Construct the approximate solution using Chebyshev-Gauss nodes.
+    order: int = 20
+    nodes: sim.RVector = math.ch_gauss_nodes(order)
+
+    function_nodes: sim.RVector = function(nodes)
+    function_coefficients: sim.RVector = math.ch_coefficients(
+        function_nodes, type=2
+    ).astype(np.float64)
+    function_expansion: sim.RVector = ch_expansion(nodes, function_coefficients)
+
+    # Check that the coefficients are as expected.
+    assert np.isclose(function_coefficients[0], 0.5)
+    assert np.isclose(function_coefficients[2], 0.5)
+
+    mask: NDArray[np.bool] = np.ones(order, dtype=np.bool)
+    mask[[0, 2]] = False
+    assert np.allclose(function_coefficients[mask], 0.0)
+
+    # Plot the exact and approximate solutions.
+    plt.plot(x_axis, function_exact)
+    plt.plot(nodes, function_expansion)
+    plt.show()
+
+    # Construct the approximate solution using Chebyshev-Lobatto nodes.
+    order: int = 20
+    nodes: sim.RVector = math.ch_lobatto_nodes(order)
+
+    function_nodes: sim.RVector = function(nodes)
+    function_coefficients: sim.RVector = math.ch_coefficients(
+        function_nodes, type=1
+    ).astype(np.float64)
+    function_expansion: sim.RVector = ch_expansion(nodes, function_coefficients)
+
+    # Check that the coefficients are as expected.
+    assert np.isclose(function_coefficients[0], 0.5)
+    assert np.isclose(function_coefficients[2], 0.5)
+
+    mask: NDArray[np.bool] = np.ones(order, dtype=np.bool)
+    mask[[0, 2]] = False
+    assert np.allclose(function_coefficients[mask], 0.0)
+
+    # Plot the exact and approximate solutions.
+    plt.plot(x_axis, function_exact)
+    plt.plot(nodes, function_expansion)
+    plt.show()
 
 
 def test_ch_gauss_nodes() -> None:
@@ -29,8 +115,10 @@ def test_ch_gauss_nodes() -> None:
     num_nodes: int = 20
     nodes: sim.RVector = math.ch_gauss_nodes(num_nodes)
 
+    # Print the Chebyshev-Gauss nodes.
     print(nodes)
 
+    # Plot the Chebyshev-Gauss nodes.
     plt.plot(nodes)
     plt.show()
 
@@ -47,8 +135,10 @@ def test_ch_lobatto_nodes() -> None:
     num_nodes: int = 20
     nodes: sim.RVector = math.ch_lobatto_nodes(num_nodes)
 
+    # Print the Chebyshev-Lobatto nodes.
     print(nodes)
 
+    # Plot the Chebyshev-Lobatto nodes.
     plt.plot(nodes)
     plt.show()
 
@@ -117,6 +207,7 @@ def test_rescale_vector() -> None:
 
 if __name__ == "__main__":
     # Run test cases.
+    test_ch_coefficients()
     test_ch_gauss_nodes()
     test_ch_lobatto_nodes()
     test_rescale_matrix()
