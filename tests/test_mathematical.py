@@ -60,9 +60,9 @@ def test_ch_coefficients() -> None:
     order: int = 20
     nodes: sim.RVector = math.ch_gauss_nodes(order)
 
-    function_nodes: sim.RVector = function(nodes)
+    function_values: sim.RVector = function(nodes)
     function_coefficients: sim.RVector = math.ch_coefficients(
-        function_nodes[::-1], type=2
+        function_values[::-1], type=2
     ).astype(np.float64)
     function_expansion: sim.RVector = ch_expansion(nodes, function_coefficients)
 
@@ -77,17 +77,18 @@ def test_ch_coefficients() -> None:
     assert np.allclose(function_coefficients[mask], 0.0)
 
     # Plot the exact and approximate solutions.
-    plt.plot(x_axis, function_exact)
-    plt.plot(nodes, function_expansion)
+    plt.plot(x_axis, function_exact, label="Exact")
+    plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
+    plt.legend()
     plt.show()
 
     # Construct the approximate solution using Chebyshev-Lobatto nodes.
     order: int = 20
     nodes: sim.RVector = math.ch_lobatto_nodes(order)
 
-    function_nodes: sim.RVector = function(nodes)
+    function_values: sim.RVector = function(nodes)
     function_coefficients: sim.RVector = math.ch_coefficients(
-        function_nodes[::-1], type=1
+        function_values[::-1], type=1
     ).astype(np.float64)
     function_expansion: sim.RVector = ch_expansion(nodes, function_coefficients)
 
@@ -102,9 +103,63 @@ def test_ch_coefficients() -> None:
     assert np.allclose(function_coefficients[mask], 0.0)
 
     # Plot the exact and approximate solutions.
-    plt.plot(x_axis, function_exact)
-    plt.plot(nodes, function_expansion)
+    plt.plot(x_axis, function_exact, label="Exact")
+    plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
+    plt.legend()
     plt.show()
+
+    print("Passed")
+    print("------")
+
+
+def test_ch_expansion() -> None:
+    """
+    Test that the "ch_expansion" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ch_expansion")
+    print("----------------------------------------------")
+
+    # Define the position operator.
+    domain: sim.HilbertSpace1D = sim.HilbertSpace1D(-5.0, 5.0, 100)
+    position: sim.RMatrix = np.diag(domain.x_axis)
+
+    # Define a wavefunction.
+    wavefunction = np.exp(-domain.x_axis**2)
+
+    # Define the operator function.
+    def function(x: sim.RVector) -> sim.RVector:
+        return x**2
+
+    # Calculate the exact solution.
+    exact: sim.RVector = position @ (position @ wavefunction)
+
+    # Calculate the approximate solution.
+    position_rs, scale, shift = math.rescale_matrix(position, -1, 1)
+
+    order: int = 10
+    nodes: sim.RVector = (math.ch_gauss_nodes(order) - shift) / scale
+
+    function_values: sim.RVector = function(nodes)
+    function_coefficients: sim.RVector = math.ch_coefficients(
+        function_values[::-1], type=2
+    ).astype(np.float64)
+
+    expansion: sim.RVector = math.ch_expansion(
+        position_rs, wavefunction, function_coefficients
+    ).astype(np.float64)
+
+    # Check that the approximation is close to the exact solution.
+    assert np.allclose(exact, expansion)
+
+    # Plot the exact and approximate solutions.
+    plt.plot(domain.x_axis, exact, label="Exact")
+    plt.plot(domain.x_axis, expansion, linestyle="--", label="Expansion")
+    plt.legend()
+    plt.show()
+
+    print("Passed")
+    print("------")
 
 
 def test_ch_gauss_nodes() -> None:
@@ -126,6 +181,9 @@ def test_ch_gauss_nodes() -> None:
     plt.plot(nodes)
     plt.show()
 
+    print("Passed")
+    print("------")
+
 
 def test_ch_lobatto_nodes() -> None:
     """
@@ -145,6 +203,9 @@ def test_ch_lobatto_nodes() -> None:
     # Plot the Chebyshev-Lobatto nodes.
     plt.plot(nodes)
     plt.show()
+
+    print("Passed")
+    print("------")
 
 
 def test_rescale_matrix() -> None:
@@ -179,6 +240,9 @@ def test_rescale_matrix() -> None:
     ) / scale
     assert np.allclose(matrix, matrix_original)
 
+    print("Passed")
+    print("------")
+
 
 def test_rescale_vector() -> None:
     """
@@ -208,6 +272,9 @@ def test_rescale_vector() -> None:
     vector_original: sim.RVector = (vector_rs - shift) / scale
     assert np.allclose(vector, vector_original)
 
+    print("Passed")
+    print("------")
+
 
 if __name__ == "__main__":
     # Run test cases.
@@ -216,3 +283,4 @@ if __name__ == "__main__":
     test_ch_gauss_nodes()
     test_ch_lobatto_nodes()
     test_ch_coefficients()
+    test_ch_expansion()
