@@ -77,21 +77,27 @@ def ch_expansion(
     operator: sim.GMatrix, ket: sim.GVector, coefficients: sim.GVector
 ) -> sim.GVector:
     """
-    Calculates the Chebyshev expansion of an operator through the recursion
-    relation for the Chebyshev polynomials of the first kind. The number of
-    expansion terms is taken to be the number of coefficients.
+    Calculates the Chebyshev expansion of an operator acting on a ket through
+    the recursion relation for the Chebyshev polynomials of the first kind. The
+    number of expansion terms is taken to be the number of coefficients.
 
     Parameters
     ----------
     operator: simulation.GMatrix
-        The operator being expanded (e.g. Hamiltonian). The eigenvalue domain
-        of the operator should be in the interval [-1, 1].
+        The operator (e.g. Hamiltonian) acting on the ket. The eigenvalue
+        domain of the operator should be in the interval [-1, 1].
     ket: simulation.GVector
         The ket (e.g. wavefunction) being acted upon by the operator.
     coefficients: simulation.GVector
         The Chebyshev expansion coefficients. The coefficients are expected to
         be the cosine transformed values of values generated from evaluating a
         function of the operator on Chebyshev-Gauss or Chebyshev-Lobatto nodes.
+
+    Returns
+    -------
+    expansion: simulation.GVector
+        The expansion term resulting from the Chebyshev expansion of the
+        operator acting on the ket.
     """
 
     # Store the number of expansion terms.
@@ -167,6 +173,68 @@ def ch_lobatto_nodes(num_nodes: int) -> sim.RVector:
     )
 
     return nodes
+
+
+def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatrix:
+    """
+    Calculates the square (lower triangular) conversion matrix for converting
+    Chebyshev expansion coefficients to Taylor-like derivatives, across a time
+    interval. The matrix is intended for use with coefficients resulting from
+    sampling a function on Chebyshev-Lobatto nodes.
+
+    Parameters
+    ----------
+    order: int
+        The size of the conversion matrix, which corresponds to the highest
+        Taylor-like derivative produced from the matrix.
+    time_min: float
+        The lower bound of the time interval.
+    time_max: float
+        The upper bound of the time interval.
+
+    Returns
+    -------
+    conversion: simulation.RMatrix
+        The conversion matrix.
+    """
+
+    # Calculate time interval information.
+    time_sum: float = time_min + time_max
+    time_dt: float = time_max - time_min
+
+    # Calculate recurring coefficients.
+    a: float = (2 * time_sum) / time_dt
+    b: float = 4 / time_dt
+
+    # Set up the conversion matrix.
+    conversion: sim.RMatrix = np.zeros((order, order), dtype=np.float64)
+    conversion[0, 0] = 1.0
+
+    conversion[1, 0] = -time_sum / time_dt
+    conversion[0, 1] = 2 / time_dt
+
+    # Construct the complete matrix.
+    for i in range(2, order):
+        # Calculate the m = 0 term (Semi-Global Appendix C.2).
+        conversion[i, 0] = -(a * conversion[i - 1, 0]) - conversion[i - 2, 0]
+
+        # Calculate the 1 <= m <= n - 2 terms (Semi-Global Appendix C.2).
+        for j in range(1, i - 1):
+            conversion[i, j] = (
+                (b * j * conversion[i - 1, j - 1])
+                - (a * conversion[i - 1, j])
+                - conversion[i - 2, j]
+            )
+
+        # Calculate the m = n - 1 term.
+        conversion[i, i - 1] = (b * (i - 1) * conversion[i - 1, i - 2]) - (
+            a * conversion[i - 1, i - 1]
+        )
+
+        # Calculate the m = n term.
+        conversion[i, i] = b * i * conversion[i - 1, i - 1]
+
+    return conversion
 
 
 def rescale_matrix(
