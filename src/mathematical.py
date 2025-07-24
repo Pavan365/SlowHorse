@@ -13,9 +13,64 @@ References
 
 # Import external modules.
 import numpy as np
+from scipy.fft import dct
 
 # Import local modules.
 import simulation as sim
+
+
+def ch_coefficients(
+    function_values: sim.GVector | sim.GVectors,
+    type: int,
+) -> sim.GVector | sim.GVectors:
+    """
+    Calculates the coefficients for a Chebyshev expansion of a function through
+    the discrete cosine transform (DCT). The function being expanded should be
+    evaluated on either Chebyshev-Gauss or Chebyshev-Lobatto nodes.
+
+    + DCT-I     : Chebyshev-Lobatto
+    + DCT-II    : Chebyshev-Gauss
+
+    Parameters
+    ----------
+    function_values: simulation.GVector | simulation.GVectors
+        The values of the function evaluated on either Chebyshev-Gauss or
+        Chebyshev-Lobatto nodes. If the function is multi-dimensional, the
+        expansion is taken to be along the zeroth axis.
+    type: int
+        The type of discrete cosine transform (DCT) to use. DCT-I should be
+        used for functions evaluated on Chebyshev-Lobatto nodes, and DCT-II
+        for functions evaluated on Chebyshev-Gauss nodes.
+
+    Returns
+    -------
+    coefficients: simulation.GVector | simulation.GVector
+        The Chebyshev expansion coefficients.
+    """
+
+    if type not in [1, 2]:
+        raise ValueError("invalid DCT type")
+
+    # Store the number of expansion terms.
+    expansion_order = function_values.shape[0]
+
+    # Perform the discrete cosine transform (DCT).
+    coefficients: sim.GVector | sim.GVector = np.asarray(
+        dct(function_values, type=type, axis=0, norm=None)
+    )
+
+    # Normalisation for DCT-I.
+    if type == 1:
+        coefficients /= expansion_order - 1
+        coefficients[0] /= 2
+        coefficients[-1] /= 2
+
+    # Normalisation for DCT-II.
+    elif type == 2:
+        coefficients /= expansion_order
+        coefficients[0] /= 2
+
+    return coefficients
 
 
 def ch_gauss_nodes(num_nodes: int) -> sim.RVector:
