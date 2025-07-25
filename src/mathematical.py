@@ -230,12 +230,12 @@ def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatri
                 - conversion[i - 2, j]
             )
 
-        # Calculate the m = n - 1 term.
+        # Calculate the m = n - 1 term (Semi-Global Appendix C.2).
         conversion[i, i - 1] = (b * (i - 1) * conversion[i - 1, i - 2]) - (
             a * conversion[i - 1, i - 1]
         )
 
-        # Calculate the m = n term.
+        # Calculate the m = n term (Semi-Global Appendix C.2).
         conversion[i, i] = b * i * conversion[i - 1, i - 1]
 
     return conversion
@@ -253,16 +253,16 @@ def ne_coefficients(
 
     Parameters
     ----------
-    nodes: sim.RVector
+    nodes: simulation.RVector
         The nodes in the target domain that the function being expanded is
         evaluated on.
-    function_values: sim.GVector
+    function_values: simulation.GVector
         The values of the function being expanded evaluated on the nodes in
         the target domain.
 
     Returns
     -------
-    coefficients: sim.GVector
+    coefficients: simulation.GVector
         The Newtonian interpolation coefficients.
     """
 
@@ -288,6 +288,48 @@ def ne_coefficients(
     ]
 
     return coefficients
+
+
+def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
+    """
+    Calculates the square (lower triangular) conversion matrix for converting
+    Newtonian interpolation coefficients to Taylor-like derivatives, across a
+    time interval.
+
+    Parameters
+    ----------
+    time_axis: simulation.RVector
+        The time-axis grid (time points) from which the Newtonian interpolation
+        coefficients (divided differences) were generated.
+
+    Returns
+    -------
+    conversion: simulation.RMatrix
+        The conversion matrix.
+    """
+
+    # Store the number of expansion terms.
+    order: int = time_axis.shape[0]
+
+    # Set up the conversion matrix.
+    conversion: sim.RMatrix = np.zeros((order, order), dtype=np.float64)
+    conversion[0, 0] = 1.0
+
+    # Construct the complete matrix.
+    for i in range(1, order):
+        # Calculate the m = 0 term (Semi-Global Appendix C.1).
+        conversion[i, 0] = -time_axis[i - 1] * conversion[i - 1, 0]
+
+        # Calculate the 1 <= m <= n - 1 terms (Semi-Global Appendix C.1).
+        for j in range(1, i):
+            conversion[i, j] = (j * conversion[i - 1, j - 1]) - (
+                time_axis[i - 1] * conversion[i - 1, j]
+            )
+
+        # Calculate the m = n term (Semi-Global Appendix C.1).
+        conversion[i, i] = i * conversion[i - 1, i - 1]
+
+    return conversion
 
 
 def rescale_matrix(
