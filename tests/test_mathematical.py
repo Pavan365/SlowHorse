@@ -103,7 +103,7 @@ def test_ch_gauss_nodes() -> None:
 
     # Plot the Chebyshev-Gauss nodes.
     plt.plot(nodes)
-    plt.title("Gauss Nodes")
+    plt.title("Chebyshev-Gauss Nodes")
     plt.show()
 
     print("Passed")
@@ -127,7 +127,7 @@ def test_ch_lobatto_nodes() -> None:
 
     # Plot the Chebyshev-Lobatto nodes.
     plt.plot(nodes)
-    plt.title("Lobatto Nodes")
+    plt.title("Chebyshev-Lobatto Nodes")
     plt.show()
 
     print("Passed")
@@ -195,7 +195,7 @@ def test_ch_coefficients() -> None:
     # Plot the exact and approximate solutions.
     plt.plot(x_axis, function_exact, label="Exact")
     plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
-    plt.title("Gauss Nodes Expansion")
+    plt.title("Chebyshev-Gauss Coefficients")
     plt.legend()
     plt.show()
 
@@ -222,7 +222,7 @@ def test_ch_coefficients() -> None:
     # Plot the exact and approximate solutions.
     plt.plot(x_axis, function_exact, label="Exact")
     plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
-    plt.title("Lobatto Nodes Expansion")
+    plt.title("Chebyshev-Lobatto Coefficients")
     plt.legend()
     plt.show()
 
@@ -273,7 +273,7 @@ def test_ch_expansion() -> None:
     # Plot the exact and approximate solutions.
     plt.plot(domain.x_axis, exact, label="Exact")
     plt.plot(domain.x_axis, expansion, linestyle="--", label="Expansion")
-    plt.title("Expansion")
+    plt.title("Chebyshev Expansion")
     plt.legend()
     plt.show()
 
@@ -351,6 +351,59 @@ def test_ch_ta_conversion() -> None:
     print("------")
 
 
+def test_ne_coefficients() -> None:
+    """
+    Test that the "ne_coefficients" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ne_coefficients")
+    print("-------------------------------------------------")
+
+    # Define a known function.
+    def function(x: sim.RVector) -> sim.RVector:
+        return x**3
+
+    # Define the Newtonian interpolation expansion.
+    def ne_expansion(nodes: sim.RVector, coefficients: sim.RVector) -> sim.RVector:
+        order: int = coefficients.shape[0]
+
+        polynomial_n: sim.RVector = np.ones(order, dtype=np.float64)
+        expansion: sim.RVector = coefficients[0] * polynomial_n
+
+        for i in range(1, order):
+            polynomial_n *= nodes - nodes[i - 1]
+            expansion += coefficients[i] * polynomial_n
+
+        return expansion
+
+    # Construct the exact solution.
+    x_axis: sim.RVector = np.linspace(-1, 1, 100, dtype=np.float64)
+    function_exact: sim.RVector = function(x_axis)
+
+    # Construct the approximate solution using Chebyshev-Lobatto nodes.
+    order: int = 20
+    nodes: sim.RVector = math.ch_lobatto_nodes(order)
+
+    function_values: sim.RVector = function(nodes)
+    function_coefficients: sim.RVector = math.ne_coefficients(
+        nodes, function_values
+    ).astype(np.float64)
+    function_expansion: sim.RVector = ne_expansion(nodes, function_coefficients)
+
+    # Print the coefficients.
+    print(function_coefficients)
+
+    # Plot the exact and approximate solutions.
+    plt.plot(x_axis, function_exact, label="Exact")
+    plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
+    plt.title("Newtonian Coefficients")
+    plt.legend()
+    plt.show()
+
+    print("Passed")
+    print("------")
+
+
 if __name__ == "__main__":
     # Run test cases.
     test_rescale_matrix()
@@ -360,3 +413,4 @@ if __name__ == "__main__":
     test_ch_coefficients()
     test_ch_expansion()
     test_ch_ta_conversion()
+    test_ne_coefficients()
