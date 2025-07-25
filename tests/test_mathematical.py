@@ -178,7 +178,7 @@ def test_ch_coefficients() -> None:
 
     function_values: sim.RVector = function(nodes)
     function_coefficients: sim.RVector = math.ch_coefficients(
-        function_values[::-1], type=2
+        function_values[::-1], dct_type=2
     ).astype(np.float64)
     function_expansion: sim.RVector = ch_expansion(nodes, function_coefficients)
 
@@ -205,7 +205,7 @@ def test_ch_coefficients() -> None:
 
     function_values: sim.RVector = function(nodes)
     function_coefficients: sim.RVector = math.ch_coefficients(
-        function_values[::-1], type=1
+        function_values[::-1], dct_type=1
     ).astype(np.float64)
     function_expansion: sim.RVector = ch_expansion(nodes, function_coefficients)
 
@@ -260,7 +260,7 @@ def test_ch_expansion() -> None:
 
     function_values: sim.RVector = function(nodes)
     function_coefficients: sim.RVector = math.ch_coefficients(
-        function_values[::-1], type=2
+        function_values[::-1], dct_type=2
     ).astype(np.float64)
 
     expansion: sim.RVector = math.ch_expansion(
@@ -331,7 +331,7 @@ def test_ch_ta_conversion() -> None:
 
     function_values: sim.RVector = np.asarray(function(nodes), dtype=np.float64)
     coefficients: sim.RVector = math.ch_coefficients(
-        function_values[::-1], type=1
+        function_values[::-1], dct_type=1
     ).astype(np.float64)
 
     conversion_matrix: sim.RMatrix = math.ch_ta_conversion(order, x_min, x_max)

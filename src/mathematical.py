@@ -25,7 +25,7 @@ import simulation as sim
 
 def ch_coefficients(
     function_values: sim.GVector | sim.GVectors,
-    type: int,
+    dct_type: int,
 ) -> sim.GVector | sim.GVectors:
     """
     Calculates the coefficients for a Chebyshev expansion of a function through
@@ -52,7 +52,7 @@ def ch_coefficients(
         The Chebyshev expansion coefficients.
     """
 
-    if type not in [1, 2]:
+    if dct_type not in [1, 2]:
         raise ValueError("invalid DCT type")
 
     # Store the number of expansion terms.
@@ -60,17 +60,17 @@ def ch_coefficients(
 
     # Perform the discrete cosine transform (DCT).
     coefficients: sim.GVector | sim.GVectors = np.asarray(
-        dct(function_values, type=type, axis=0, norm=None)
+        dct(function_values, type=dct_type, axis=0, norm=None)
     )
 
     # Normalisation for DCT-I.
-    if type == 1:
+    if dct_type == 1:
         coefficients /= order - 1
         coefficients[0] /= 2
         coefficients[-1] /= 2
 
     # Normalisation for DCT-II.
-    elif type == 2:
+    elif dct_type == 2:
         coefficients /= order
         coefficients[0] /= 2
 
