@@ -5,11 +5,15 @@ for the time-dependent Schrödinger equation.
 Abbreviations
 -------------
 + ch : Chebyshev
++ ne : Newtonian
 
 References
 ----------
 + I. Schaefer et al. (2017). Available at: https://doi.org/10.1016/j.jcp.2017.04.017.
 """
+
+# Import standard modules.
+from typing import cast
 
 # Import external modules.
 import numpy as np
@@ -55,7 +59,7 @@ def ch_coefficients(
     order: int = function_values.shape[0]
 
     # Perform the discrete cosine transform (DCT).
-    coefficients: sim.GVector | sim.GVector = np.asarray(
+    coefficients: sim.GVector | sim.GVectors = np.asarray(
         dct(function_values, type=type, axis=0, norm=None)
     )
 
@@ -235,6 +239,55 @@ def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatri
         conversion[i, i] = b * i * conversion[i - 1, i - 1]
 
     return conversion
+
+
+def ne_coefficients(
+    nodes: sim.RVector,
+    function_values: sim.GVector,
+) -> sim.GVector:
+    """
+    Calculates the coefficients for a Newtonian interpolation expansion of a
+    function through building a divided differences table, which is upper
+    triangular and contains the coefficients on the main diagonal. The function
+    being expanded should be evaluated on nodes in the target domain.
+
+    Parameters
+    ----------
+    nodes: sim.RVector
+        The nodes in the target domain that the function being expanded is
+        evaluated on.
+    function_values: sim.GVector
+        The values of the function being expanded evaluated on the nodes in
+        the target domain.
+
+    Returns
+    -------
+    coefficients: sim.GVector
+        The Newtonian interpolation coefficients.
+    """
+
+    # Store the number of expansion terms.
+    order: int = nodes.shape[0]
+
+    # Set up the divided differences table.
+    table: sim.GMatrix = cast(
+        sim.GMatrix, np.zeros((order, order), dtype=function_values.dtype)
+    )
+    table[0, :] = function_values
+
+    # Construct the divided differences table (upper triangular).
+    for i in range(1, order):
+        for j in range(i, order):
+            table[i, j] = (table[i - 1, j] - table[i - 1, j - 1]) / (
+                nodes[j] - nodes[j - i]
+            )
+
+    # Store the Newtonian interpolation coefficients.
+    coefficients: sim.GVector = table[
+        np.arange(order, dtype=np.int32), np.arange(order, dtype=np.int32)
+    ]
+
+    return coefficients
 
 
 def rescale_matrix(
