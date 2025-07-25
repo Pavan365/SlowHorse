@@ -404,6 +404,76 @@ def test_ne_coefficients() -> None:
     print("------")
 
 
+def test_ne_ta_conversion() -> None:
+    """
+    Test that the "ne_ta_conversion" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ne_ta_conversion")
+    print("--------------------------------------------------")
+
+    # Define a known function.
+    def function(x: sim.RVector | float) -> sim.RVector | float:
+        return (3 * (x**3)) + (2 * (x**2)) + 1
+
+    # Define the derivatives of the function.
+    def function_dx_01(x: float) -> float:
+        return (9 * (x**2)) + (4 * x)
+
+    def function_dx_02(x: float) -> float:
+        return (18 * x) + 4
+
+    def function_dx_03(x: float) -> float:
+        return 18.0
+
+    def function_dx_04(x: float) -> float:
+        return 0.0
+
+    # Define a domain.
+    x_min: float = 0.0
+    x_max: float = 1.0
+
+    # Define the number of derivatives.
+    order: int = 5
+
+    # Define the exact derivatives at the minimum point of the domain.
+    exact: sim.RVector = np.array(
+        [
+            function(x_min),
+            function_dx_01(x_min),
+            function_dx_02(x_min),
+            function_dx_03(x_min),
+            function_dx_04(x_min),
+        ],
+        dtype=np.float64,
+    )
+
+    # Calculate the approximate Taylor-like derivatives.
+    nodes: sim.RVector = math.ch_lobatto_nodes(order)
+    nodes, scale, shift = math.rescale_vector(nodes, x_min, x_max)
+
+    function_values: sim.RVector = np.asarray(function(nodes), dtype=np.float64)
+    coefficients: sim.RVector = math.ne_coefficients(nodes, function_values).astype(
+        np.float64
+    )
+
+    conversion_matrix: sim.RMatrix = math.ne_ta_conversion(nodes)
+    derivatives: sim.RMatrix = conversion_matrix.T @ coefficients
+
+    # Print the conversion matrix.
+    print(conversion_matrix)
+
+    # Check that the exact and approximated derivatives are similar.
+    print(exact)
+    with np.printoptions(formatter={"float": "{: 0.5e}".format}):
+        print(derivatives)
+
+    assert np.allclose(exact, derivatives)
+
+    print("Passed")
+    print("------")
+
+
 if __name__ == "__main__":
     # Run test cases.
     test_rescale_matrix()
@@ -414,3 +484,4 @@ if __name__ == "__main__":
     test_ch_expansion()
     test_ch_ta_conversion()
     test_ne_coefficients()
+    test_ne_ta_conversion()
