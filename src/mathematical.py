@@ -211,7 +211,7 @@ def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatri
     conversion[0, 0] = 1.0
 
     conversion[1, 0] = -time_sum / time_dt
-    conversion[0, 1] = 2 / time_dt
+    conversion[1, 1] = 2 / time_dt
 
     # Construct the complete matrix.
     for i in range(2, order):
