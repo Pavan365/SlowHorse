@@ -103,6 +103,7 @@ def test_ch_gauss_nodes() -> None:
 
     # Plot the Chebyshev-Gauss nodes.
     plt.plot(nodes)
+    plt.title("Gauss Nodes")
     plt.show()
 
     print("Passed")
@@ -126,6 +127,7 @@ def test_ch_lobatto_nodes() -> None:
 
     # Plot the Chebyshev-Lobatto nodes.
     plt.plot(nodes)
+    plt.title("Lobatto Nodes")
     plt.show()
 
     print("Passed")
@@ -193,6 +195,7 @@ def test_ch_coefficients() -> None:
     # Plot the exact and approximate solutions.
     plt.plot(x_axis, function_exact, label="Exact")
     plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
+    plt.title("Gauss Nodes Expansion")
     plt.legend()
     plt.show()
 
@@ -219,6 +222,7 @@ def test_ch_coefficients() -> None:
     # Plot the exact and approximate solutions.
     plt.plot(x_axis, function_exact, label="Exact")
     plt.plot(nodes, function_expansion, linestyle="--", label="Expansion")
+    plt.title("Lobatto Nodes Expansion")
     plt.legend()
     plt.show()
 
@@ -269,8 +273,79 @@ def test_ch_expansion() -> None:
     # Plot the exact and approximate solutions.
     plt.plot(domain.x_axis, exact, label="Exact")
     plt.plot(domain.x_axis, expansion, linestyle="--", label="Expansion")
+    plt.title("Expansion")
     plt.legend()
     plt.show()
+
+    print("Passed")
+    print("------")
+
+
+def test_ch_ta_conversion() -> None:
+    """
+    Test that the "ch_ta_conversion" function performs as expected.
+    """
+
+    print("Function Tested: src.mathematical.ch_ta_conversion")
+    print("--------------------------------------------------")
+
+    # Define a known function.
+    def function(x: sim.RVector | float) -> sim.RVector | float:
+        return (3 * (x**3)) + (2 * (x**2)) + 1
+
+    # Define the derivatives of the function.
+    def function_dx_01(x: float) -> float:
+        return (9 * (x**2)) + (4 * x)
+
+    def function_dx_02(x: float) -> float:
+        return (18 * x) + 4
+
+    def function_dx_03(x: float) -> float:
+        return 18.0
+
+    def function_dx_04(x: float) -> float:
+        return 0.0
+
+    # Define a domain.
+    x_min: float = 0.0
+    x_max: float = 1.0
+
+    # Define the number of derivatives.
+    order: int = 5
+
+    # Define the exact derivatives at the minimum point of the domain.
+    exact: sim.RVector = np.array(
+        [
+            function(x_min),
+            function_dx_01(x_min),
+            function_dx_02(x_min),
+            function_dx_03(x_min),
+            function_dx_04(x_min),
+        ],
+        dtype=np.float64,
+    )
+
+    # Calculate the approximate Taylor-like derivatives.
+    nodes: sim.RVector = math.ch_lobatto_nodes(order)
+    nodes, scale, shift = math.rescale_vector(nodes, x_min, x_max)
+
+    function_values: sim.RVector = np.asarray(function(nodes), dtype=np.float64)
+    coefficients: sim.RVector = math.ch_coefficients(
+        function_values[::-1], type=1
+    ).astype(np.float64)
+
+    conversion_matrix: sim.RMatrix = math.ch_ta_conversion(order, x_min, x_max)
+    derivatives: sim.RMatrix = conversion_matrix.T @ coefficients
+
+    # Print the conversion matrix.
+    print(conversion_matrix)
+
+    # Check that the exact and approximated derivatives are similar.
+    print(exact)
+    with np.printoptions(formatter={"float": "{: 0.5e}".format}):
+        print(derivatives)
+
+    assert np.allclose(exact, derivatives)
 
     print("Passed")
     print("------")
@@ -284,3 +359,4 @@ if __name__ == "__main__":
     test_ch_lobatto_nodes()
     test_ch_coefficients()
     test_ch_expansion()
+    test_ch_ta_conversion()
