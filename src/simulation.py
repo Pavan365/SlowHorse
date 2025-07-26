@@ -9,11 +9,15 @@ from typing import Callable, Optional, TypeAlias
 import numpy as np
 from numpy.typing import NDArray
 
-# Generalised type aliases for matrices, vectors and collections of vectors.
+# Generalised type aliases for matrices, vectors and collections of matrices/vectors.
 # G -> General, R -> Real, C -> Complex.
 GMatrix: TypeAlias = NDArray[np.float64] | NDArray[np.complex128]
 RMatrix: TypeAlias = NDArray[np.float64]
 CMatrix: TypeAlias = NDArray[np.complex128]
+
+GMatrices: TypeAlias = NDArray[np.float64] | NDArray[np.complex128]
+RMatrices: TypeAlias = NDArray[np.float64]
+CMatrices: TypeAlias = NDArray[np.complex128]
 
 GVector: TypeAlias = NDArray[np.float64] | NDArray[np.complex128]
 RVector: TypeAlias = NDArray[np.float64]
