@@ -318,6 +318,11 @@ def propagate(
             # Update the number of iterations.
             count += 1
 
+            # NOTE: DIAGNOSTIC
+            # Print diagnostic information.
+            print(f"Time Index: {i} \t Iteration: {count}")
+            print(f"Convergence: {convergence:.5e}")
+
         # If convergence failed, raise an error.
         if count >= max_iters:
             raise ValueError("convergence failed")
