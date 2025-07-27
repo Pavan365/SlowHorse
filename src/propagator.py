@@ -223,11 +223,11 @@ def propagate(
         f_nodes: sim.RVector = math.ch_gauss_nodes(order_f)
         f_nodes: sim.RVector = (f_nodes - h_shift) / h_scale
 
-        # Generate the conversion matrix (transposed).
+        # Generate the conversion matrix.
         # To convert Chebyshev expansion coefficients to Taylor-like derivatives.
         conversion_matrix: sim.RMatrix = math.ch_ta_conversion(
             order_m, t_start, t_final
-        ).T
+        )
 
         # Set up the inhomogeneous kets (variable scoping).
         lambdas: sim.CVectors = np.zeros(
@@ -260,13 +260,9 @@ def propagate(
 
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
-            taylor_derivatives: sim.CVectors = np.zeros(
-                (order_m, domain.num_points), dtype=np.complex128
+            taylor_derivatives: sim.CVectors = (
+                conversion_matrix.T @ inhomogeneous_coefficients
             )
-            for j in range(order_m):
-                taylor_derivatives[j] = (
-                    conversion_matrix @ inhomogeneous_coefficients[j]
-                )
 
             ## NOTE: STEP 2.C.IV
             # Calculate the inhomogeneous kets (lambdas).
