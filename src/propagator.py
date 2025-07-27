@@ -266,7 +266,7 @@ def propagate(
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
             taylor_derivatives: sim.CVectors = (
-                conversion_matrix.T @ inhomogeneous_coefficients
+                conversion_matrix @ inhomogeneous_coefficients
             )
 
             ## NOTE: STEP 2.C.IV
