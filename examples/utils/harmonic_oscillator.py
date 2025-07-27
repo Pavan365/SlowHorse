@@ -24,8 +24,8 @@ def hamiltonian_standard(domain: sim.HilbertSpace1D) -> sim.RMatrix:
     to construct the kinetic energy operator in position space. This function
     also enforces periodic boundaries.
 
-    Paramaeters
-    -----------
+    Parameters
+    ----------
     domain: simulation.HilbertSpace1D
         The discretised Hilbert space (domain) of the system.
 
@@ -60,7 +60,7 @@ def hamiltonian_standard(domain: sim.HilbertSpace1D) -> sim.RMatrix:
         + np.diag(ke_diag_2, k=-2)
     )
 
-    # Enfore periodic boundaries.
+    # Enforce periodic boundaries.
     ke_operator[0, -1] = ke_coeff_diag_1
     ke_operator[-1, 0] = ke_coeff_diag_1
 
