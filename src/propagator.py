@@ -163,6 +163,11 @@ def propagate(
     tolerance: float
         The tolerance of the propagator. This is used to define the convergence
         criterion during iterative time ordering.
+
+    Returns
+    -------
+    wavefunctions: simulation.CVectors
+        The propagated wavefunctions.
     """
 
     assert system.hamiltonian_ti is not None
