@@ -286,7 +286,7 @@ def propagate(
                 t_dt_m = t_nodes[j] - t_nodes[0]
 
                 function_values: sim.CVector = inhomogeneous_operator(
-                    f_nodes, t_dt_m, order_m, threshold=1e-2, tolerance=tolerance
+                    f_nodes, t_dt_m, order_m, threshold=1e-2, tolerance=1e-16
                 )
                 function_coefficients: sim.CVector = math.ch_coefficients(
                     function_values[::-1], dct_type=2
@@ -354,7 +354,7 @@ def propagate(
 
                 # Calculate the Chebyshev expansion of the inhomogeneous operator.
                 function_values_next: sim.CVector = inhomogeneous_operator(
-                    f_nodes, t_dt_next_m, order_m, threshold=1e-2, tolerance=tolerance
+                    f_nodes, t_dt_next_m, order_m, threshold=1e-2, tolerance=1e-16
                 )
                 function_coefficients_next: sim.CVector = math.ch_coefficients(
                     function_values_next[::-1], dct_type=2
