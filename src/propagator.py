@@ -8,6 +8,7 @@ References
 """
 
 # Import standard modules.
+from enum import Enum
 from typing import cast
 
 # Import external modules.
@@ -17,6 +18,24 @@ from scipy.special import factorial
 # Import local modules.
 import mathematical as math
 import simulation as sim
+
+
+class ApproximationBasis(Enum):
+    """
+    Enumeration of the available approximation bases for the inhomogeneous
+    term in the Semi-Global propagation scheme.
+
+    Members
+    -------
+    CHEBYSHEV: str
+        Represents a Chebyshev expansion of the inhomogeneous term.
+    NEWTONIAN: str
+        Represents a Newtonian interpolation expansion of the inhomogeneous
+        term.
+    """
+
+    CHEBYSHEV = "ch"
+    NEWTONIAN = "ne"
 
 
 def inhomogeneous_operator(
@@ -135,6 +154,7 @@ def propagate(
     order_m: int,
     order_f: int,
     tolerance: float,
+    approximation: ApproximationBasis,
 ) -> sim.CVectors:
     """
     Propagates a wavefunction with respect to the time-dependent Schrödinger
@@ -163,6 +183,9 @@ def propagate(
     tolerance: float
         The tolerance of the propagator. This is used to define the convergence
         criterion during iterative time ordering.
+    approximation: ApproximationBasis
+        The approximation basis to use for the inhomogeneous term. This can
+        either be a Chebyshev expansion or a Newtonian interpolation expansion.
 
     Returns
     -------
@@ -229,10 +252,16 @@ def propagate(
         f_nodes: sim.RVector = (f_nodes - h_shift) / h_scale
 
         # Generate the conversion matrix.
-        # To convert Chebyshev expansion coefficients to Taylor-like derivatives.
-        conversion_matrix: sim.RMatrix = math.ch_ta_conversion(
-            order_m, t_start, t_final
-        )
+        # To convert expansion coefficients to Taylor-like derivatives.
+        conversion_matrix: sim.RMatrix = np.zeros((order_m, order_m), dtype=np.float64)
+
+        # Chebyshev expansion conversion.
+        if approximation == ApproximationBasis.CHEBYSHEV:
+            conversion_matrix = math.ch_ta_conversion(order_m, t_start, t_final)
+
+        # Newtonian expansion conversion.
+        else:
+            conversion_matrix = math.ne_ta_conversion(t_nodes)
 
         # Set up the inhomogeneous kets (variable scoping).
         lambdas: sim.CVectors = np.zeros(
@@ -258,10 +287,23 @@ def propagate(
                 inhomogeneous_values[j] = -1j * (hamiltonian_diffs[j] @ wf_guesses[j])
 
             ## NOTE: STEP 2.C.II
-            # Calculate the Chebyshev expansion coefficients of the inhomogeneous terms.
-            inhomogeneous_coefficients: sim.CVectors = math.ch_coefficients(
-                inhomogeneous_values[::-1], dct_type=1
-            ).astype(np.complex128)
+            # Calculate the expansion coefficients of the inhomogeneous terms.
+            inhomogeneous_coefficients: sim.CVectors = np.zeros(
+                (order_m, domain.num_points), dtype=np.complex128
+            )
+
+            # Chebyshev expansion coefficients.
+            if approximation == ApproximationBasis.CHEBYSHEV:
+                inhomogeneous_coefficients = math.ch_coefficients(
+                    inhomogeneous_values[::-1], dct_type=1
+                ).astype(np.complex128)
+
+            # Newtonian expansion coefficients.
+            else:
+                for j in range(domain.num_points):
+                    inhomogeneous_coefficients[:, j] = math.ne_coefficients(
+                        t_nodes, inhomogeneous_values[:, j]
+                    )
 
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
