@@ -335,7 +335,7 @@ def test_ch_ta_conversion() -> None:
     ).astype(np.float64)
 
     conversion_matrix: sim.RMatrix = math.ch_ta_conversion(order, x_min, x_max)
-    derivatives: sim.RMatrix = conversion_matrix @ coefficients
+    derivatives: sim.RMatrix = conversion_matrix.T @ coefficients
 
     # Print the conversion matrix.
     print(conversion_matrix)
@@ -458,7 +458,7 @@ def test_ne_ta_conversion() -> None:
     )
 
     conversion_matrix: sim.RMatrix = math.ne_ta_conversion(nodes)
-    derivatives: sim.RMatrix = conversion_matrix @ coefficients
+    derivatives: sim.RMatrix = conversion_matrix.T @ coefficients
 
     # Print the conversion matrix.
     print(conversion_matrix)
