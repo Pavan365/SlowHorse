@@ -105,8 +105,13 @@ def inhomogeneous_operator(
 
 
 def inhomogeneous_kets(
-    operator: sim.GMatrix, ket: sim.GVector, derivatives: sim.GVectors, order: int
-) -> sim.GVectors:
+    operator: sim.Operator,
+    domain: sim.HilbertSpace1D,
+    time: float,
+    ket: sim.GVector,
+    derivatives: sim.GVectors,
+    order: int,
+) -> sim.CVectors:
     """
     Calculates the inhomogeneous kets which represent time-evolved states with
     corrections from time derivatives of an inhomogeneous term. The derivatives
@@ -117,8 +122,13 @@ def inhomogeneous_kets(
 
     Parameters
     ----------
-    operator: simulation.GMatrix
-        The operator (e.g. Hamiltonian) acting on the ket.
+    operator: simulation.Operator
+        A function that returns the action of an operator (e.g. Hamiltonian) on
+        a state.
+    domain: HilbertSpace1D
+        The discretised Hilbert space (domain) of the system.
+    time: float
+        The time at which to evaluate the operator.
     ket: simulation.GVector
         The ket (e.g. wavefunction) being acted upon by the operator.
     derivatives: simulation.GVectors
@@ -134,14 +144,12 @@ def inhomogeneous_kets(
     """
 
     # Set up the inhomogeneous kets.
-    kets: sim.GVectors = np.zeros(
-        (order, ket.shape[0]), dtype=np.result_type(operator, ket, derivatives)
-    )
+    kets: sim.CVectors = np.zeros((order, ket.shape[0]), dtype=np.complex128)
     kets[0] = ket.copy()
 
     # Calculate the inhomogeneous kets.
     for i in range(1, order):
-        kets[i] = ((operator @ kets[i - 1]) + derivatives[i - 1]) / i
+        kets[i] = (operator(kets[i - 1], domain, time) + derivatives[i - 1]) / i
 
     return kets
 
