@@ -201,13 +201,7 @@ def propagate(
         The propagated wavefunctions.
     """
 
-    assert system.hamiltonian_ti is not None
-    assert system.hamiltonian_td is not None
-
     ## NOTE: GLOBAL PRE-COMPUTATIONS
-    # Store the time-independent Hamiltonian term.
-    hamiltonian_ti: sim.GMatrix = system.hamiltonian_ti(domain)
-
     # Create a vector to store the wavefunctions.
     wavefunctions: sim.CVectors = np.zeros(
         (time_domain.num_points, domain.num_points), dtype=np.complex128
@@ -236,28 +230,11 @@ def propagate(
         t_nodes: sim.RVector = math.ch_lobatto_nodes(order_m)
         t_nodes: sim.RVector = math.rescale_vector(t_nodes, t_start, t_final)[0]
 
-        # Store the time-dependent Hamiltonian term (midpoint).
-        hamiltonian_mid: sim.GMatrix = system.hamiltonian_td(domain, t_mid)
-
-        # Set up the Hamiltonian for the time interval.
-        hamiltonian: sim.GMatrix = hamiltonian_ti + hamiltonian_mid
-        hamiltonian_rs, h_scale, h_shift = math.rescale_matrix(hamiltonian, -1.0, 1.0)
-
-        hamiltonian_i: sim.CMatrix = -1j * hamiltonian.astype(np.complex128)
-        hamiltonian_rs_i: sim.CMatrix = -1j * hamiltonian_rs.astype(np.complex128)
-
-        # Set up the Hamiltonian differences for the time interval.
-        hamiltonian_diffs: sim.CMatrices = np.zeros(
-            (order_m, domain.num_points, domain.num_points), dtype=np.complex128
-        )
-        for j in range(order_m):
-            hamiltonian_diffs[j] = (
-                system.hamiltonian_td(domain, t_nodes[j]) - hamiltonian_mid
-            )
-
         # Set up the Chebyshev-Gauss nodes for expanding the inhomogeneous operator.
         f_nodes: sim.RVector = math.ch_gauss_nodes(order_f)
-        f_nodes: sim.RVector = (f_nodes - h_shift) / h_scale
+        f_nodes: sim.RVector = math.rescale_vector(
+            f_nodes, system.eigenvalue_min, system.eigenvalue_max
+        )[0]
 
         # Generate the conversion matrix.
         # To convert expansion coefficients to Taylor-like derivatives.
@@ -292,7 +269,9 @@ def propagate(
                 (order_m, domain.num_points), dtype=np.complex128
             )
             for j in range(order_m):
-                inhomogeneous_values[j] = -1j * (hamiltonian_diffs[j] @ wf_guesses[j])
+                inhomogeneous_values[j] = system.hamiltonian_diff(
+                    wf_guesses[j], domain, t_nodes[j], t_mid
+                )
 
             ## NOTE: STEP 2.C.II
             # Calculate the expansion coefficients of the inhomogeneous terms.
@@ -322,7 +301,12 @@ def propagate(
             ## NOTE: STEP 2.C.IV
             # Calculate the inhomogeneous kets (lambdas).
             lambdas: sim.CVectors = inhomogeneous_kets(
-                hamiltonian_i, wf_guesses[0], taylor_derivatives, (order_m + 1)
+                system.hamiltonian,
+                domain,
+                t_mid,
+                wf_guesses[0],
+                taylor_derivatives,
+                (order_m + 1),
             ).astype(np.complex128)
 
             ## NOTE: STEP 2.C.V
@@ -343,7 +327,11 @@ def propagate(
                 ).astype(np.complex128)
 
                 operator_term: sim.CVector = math.ch_expansion(
-                    hamiltonian_rs_i, lambdas[-1], function_coefficients
+                    system.hamiltonian_rs,
+                    domain,
+                    t_mid,
+                    lambdas[-1],
+                    function_coefficients,
                 ).astype(np.complex128)
 
                 # Calculate the truncated Taylor expansion.
@@ -411,7 +399,11 @@ def propagate(
                 ).astype(np.complex128)
 
                 operator_term_next: sim.CVector = math.ch_expansion(
-                    hamiltonian_rs_i, lambdas[-1], function_coefficients_next
+                    system.hamiltonian_rs,
+                    domain,
+                    t_mid,
+                    lambdas[-1],
+                    function_coefficients_next,
                 ).astype(np.complex128)
 
                 # Calculate the truncated Taylor expansion.
