@@ -113,12 +113,12 @@ def hamiltonian_driven(
     pe_operator: sim.RVector = 0.5 * (domain.x_axis**2) + (domain.x_axis * np.cos(time))
     pe_ket: sim.GVector = pe_operator * ket
 
-    return -1j * (ke_ket + pe_ket)
+    return ke_ket + pe_ket
 
 
 def hamiltonian_driven_diff(
     ket: sim.GVector, domain: sim.HilbertSpace1D, time_1: float, time_2: float
-) -> sim.CVector:
+) -> sim.GVector:
     """
     Calculates the difference in the action of the Hamiltonian of a driven
     harmonic oscillator on a given state, in natural units, at two different
@@ -137,7 +137,7 @@ def hamiltonian_driven_diff(
 
     Returns
     -------
-    CVector
+    GVector
         The result of the difference in acting the Hamiltonian on the given
         state, at the given two different times.
     """
@@ -146,4 +146,4 @@ def hamiltonian_driven_diff(
     pe_operator_diff: sim.RVector = domain.x_axis * (np.cos(time_1) - np.cos(time_2))
     pe_ket_diff: sim.GVector = pe_operator_diff * ket
 
-    return cast(sim.CVector, -1j * pe_ket_diff)
+    return pe_ket_diff
