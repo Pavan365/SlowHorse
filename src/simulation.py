@@ -3,7 +3,7 @@ Classes for setting up simulations.
 """
 
 # Import standard modules.
-from typing import Callable, Optional, TypeAlias
+from typing import Callable, TypeAlias
 
 # Import external modules.
 import numpy as np
@@ -71,9 +71,9 @@ class HilbertSpace1D:
 
 
 # Type aliases for time-dependent Schrödinger equation terms.
-Hamiltonian: TypeAlias = Callable[[GVector, HilbertSpace1D, float], GVector]
-HamiltonianRs: TypeAlias = Callable[[GVector, HilbertSpace1D, float], GVector]
-HamiltonianDiff: TypeAlias = Callable[
+Operator: TypeAlias = Callable[[GVector, HilbertSpace1D, float], GVector]
+OperatorRs: TypeAlias = Callable[[GVector, HilbertSpace1D, float], GVector]
+OperatorDiff: TypeAlias = Callable[
     [
         GVector,
         HilbertSpace1D,
@@ -90,12 +90,12 @@ class TDSE1D:
 
     Attributes
     ----------
-    hamiltonian: Hamiltonian
+    hamiltonian: Operator
         A function that returns the action of a Hamiltonian on a state.
-    hamiltonian_rs: HamiltonianRs
+    hamiltonian_rs: OperatorRs
         A function that returns the action of a Hamiltonian on a state,
         rescaled to the domain [-1, 1].
-    hamiltonian_diff: HamiltonianDiff
+    hamiltonian_diff: OperatorDiff
         A function that returns the difference in the action of a Hamiltonian
         on a state, at two different times.
     eigenvalue_min: float
@@ -106,8 +106,8 @@ class TDSE1D:
 
     def __init__(
         self,
-        hamiltonian: Hamiltonian,
-        hamiltonian_diff: HamiltonianDiff,
+        hamiltonian: Operator,
+        hamiltonian_diff: OperatorDiff,
         eigenvalue_min: float,
         eigenvalue_max: float,
     ) -> None:
@@ -128,8 +128,8 @@ class TDSE1D:
         """
 
         # Assign attributes.
-        self.hamiltonian: Hamiltonian = hamiltonian
-        self.hamiltonian_diff: HamiltonianDiff = hamiltonian_diff
+        self.hamiltonian: Operator = hamiltonian
+        self.hamiltonian_diff: OperatorDiff = hamiltonian_diff
 
         self.eigenvalue_min: float = eigenvalue_min
         self.eigenvalue_max: float = eigenvalue_max
