@@ -142,18 +142,19 @@ def main():
     print(f"Max Energy Deviation: {np.max(np.abs(energies[0] - energies)):.2e}")
 
     # Calculate the error from the exact solution.
-    wavefunctions_exact: sim.CVectors = standard_solution(
-        domain, system, wavefunction, time_domain
-    )
-    error: sim.RVector = cast(
+    expectation_x: sim.RVector = cast(
         sim.RVector,
         np.trapezoid(
-            np.abs(wavefunctions_exact - wavefunctions) ** 2, axis=1, dx=domain.x_dx
-        )
+            ((np.abs(wavefunctions) ** 2) * domain.x_axis), dx=domain.x_dx, axis=1
+        ),
     )
+    expectation_x_exact: sim.RVector = (
+        -0.5 * np.sin(time_domain.t_axis) * time_domain.t_axis
+    )
+    error: sim.RVector = expectation_x - expectation_x_exact
 
     # Print the max error from the exact solution.
-    print(f"Max Error: {np.max(error):.2e}")
+    print(f"Max Error: {np.abs(np.max(error)):.2e}")
 
     # Generate figures and animation.
     vis.plot_wavefunctions(
@@ -162,7 +163,6 @@ def main():
     vis.animate_wavefunctions(
         wavefunctions, domain, time_domain, f"animations/{filename}.mp4"
     )
-
 
 
 if __name__ == "__main__":
