@@ -115,11 +115,19 @@ def main():
     order_f: int = 10
 
     tolerance: float = 1e-16
+    approximation: prop.ApproximationBasis = prop.ApproximationBasis.CHEBYSHEV
 
     # Propagate the wavefunction (timed).
     time_start: float = time.time()
     wavefunctions: sim.CVectors = prop.propagate(
-        domain, system, wavefunction, time_domain, order_m, order_f, tolerance
+        domain,
+        system,
+        wavefunction,
+        time_domain,
+        order_m,
+        order_f,
+        tolerance,
+        approximation,
     )
     time_final: float = time.time()
 
