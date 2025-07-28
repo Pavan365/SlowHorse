@@ -255,6 +255,11 @@ def test_ch_expansion() -> None:
     # Calculate the approximate solution.
     position_rs, scale, shift = math.rescale_matrix(position, -1, 1)
 
+    def operator_rs(
+        ket: sim.GVector, domain: sim.HilbertSpace1D, time: float
+    ) -> sim.GVector:
+        return position_rs @ ket
+
     order: int = 10
     nodes: sim.RVector = (math.ch_gauss_nodes(order) - shift) / scale
 
@@ -264,7 +269,7 @@ def test_ch_expansion() -> None:
     ).astype(np.float64)
 
     expansion: sim.RVector = math.ch_expansion(
-        position_rs, wavefunction, function_coefficients
+        operator_rs, domain, 0.0, wavefunction, function_coefficients
     ).astype(np.float64)
 
     # Check that the approximation is close to the exact solution.
