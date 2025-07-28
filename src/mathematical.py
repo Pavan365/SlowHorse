@@ -97,7 +97,7 @@ def ch_expansion(
     domain: HilbertSpace1D
         The discretised Hilbert space (domain) of the system.
     time: float
-        The time at which to evaluate the Hamiltonian
+        The time at which to evaluate the operator.
     ket: simulation.GVector
         The ket (e.g. wavefunction) being acted upon by the operator.
     coefficients: simulation.GVector
