@@ -89,7 +89,7 @@ def inhomogeneous_operator(
             if np.all(np.abs(term) < tolerance):
                 break
 
-        return term_sta_1 * term_sta_2
+        return factorial(order) * term_sta_1 * term_sta_2
 
     # Standard definition.
     else:
@@ -101,7 +101,7 @@ def inhomogeneous_operator(
         for i in range(order):
             term_std_3 += ((-1j * nodes * time) ** i) / factorial(i)
 
-        return term_std_1 * (term_std_2 - term_std_3)
+        return factorial(order) * term_std_1 * (term_std_2 - term_std_3)
 
 
 def inhomogeneous_kets(
@@ -141,7 +141,7 @@ def inhomogeneous_kets(
 
     # Calculate the inhomogeneous kets.
     for i in range(1, order):
-        kets[i] = (operator @ kets[i - 1]) + derivatives[i - 1]
+        kets[i] = ((operator @ kets[i - 1]) + derivatives[i - 1]) / i
 
     return kets
 
@@ -343,7 +343,7 @@ def propagate(
                     domain.num_points, dtype=np.complex128
                 )
                 for k in range(order_m):
-                    taylor_term += ((t_dt_m**k) / factorial(k)) * lambdas[k]
+                    taylor_term += (t_dt_m**k) * lambdas[k]
 
                 # Store the new guess wavefunction.
                 wf_guesses[j] = operator_term + taylor_term
@@ -411,7 +411,7 @@ def propagate(
                     domain.num_points, dtype=np.complex128
                 )
                 for k in range(order_m):
-                    taylor_term_next += ((t_dt_next_m**k) / factorial(k)) * lambdas[k]
+                    taylor_term_next += (t_dt_next_m**k) * lambdas[k]
 
                 # Store the new guess wavefunction.
                 wf_guesses[j] = operator_term_next + taylor_term_next

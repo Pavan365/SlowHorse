@@ -225,18 +225,18 @@ def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatri
         # Calculate the 1 <= m <= n - 2 terms (Semi-Global Appendix C.2).
         for j in range(1, i - 1):
             conversion[i, j] = (
-                (b * j * conversion[i - 1, j - 1])
+                (b * conversion[i - 1, j - 1])
                 - (a * conversion[i - 1, j])
                 - conversion[i - 2, j]
             )
 
         # Calculate the m = n - 1 term (Semi-Global Appendix C.2).
-        conversion[i, i - 1] = (b * (i - 1) * conversion[i - 1, i - 2]) - (
+        conversion[i, i - 1] = (b * conversion[i - 1, i - 2]) - (
             a * conversion[i - 1, i - 1]
         )
 
         # Calculate the m = n term (Semi-Global Appendix C.2).
-        conversion[i, i] = b * i * conversion[i - 1, i - 1]
+        conversion[i, i] = b * conversion[i - 1, i - 1]
 
     return conversion
 
@@ -322,12 +322,12 @@ def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
 
         # Calculate the 1 <= m <= n - 1 terms (Semi-Global Appendix C.1).
         for j in range(1, i):
-            conversion[i, j] = (j * conversion[i - 1, j - 1]) - (
+            conversion[i, j] = conversion[i - 1, j - 1] - (
                 time_axis[i - 1] * conversion[i - 1, j]
             )
 
         # Calculate the m = n term (Semi-Global Appendix C.1).
-        conversion[i, i] = i * conversion[i - 1, i - 1]
+        conversion[i, i] = conversion[i - 1, i - 1]
 
     return conversion
 
