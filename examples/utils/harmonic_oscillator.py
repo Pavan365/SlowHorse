@@ -10,6 +10,9 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "src"))
 )
 
+# Import standard modules.
+from typing import cast
+
 # Import external modules.
 import numpy as np
 
@@ -76,22 +79,71 @@ def hamiltonian_standard(domain: sim.HilbertSpace1D) -> sim.RMatrix:
     return ke_operator + pe_operator
 
 
-def hamiltonian_driven(domain: sim.HilbertSpace1D, time: float) -> sim.RMatrix:
+def hamiltonian_driven(
+    ket: sim.GVector, domain: sim.HilbertSpace1D, time: float
+) -> sim.CVector:
     """
-    Generates the time-dependent Hamiltonian term of a driven harmonic
-    oscillator in natural units.
+    Calculates the action of the Hamiltonian of a driven harmonic oscillator on
+    a given state, in natural units. This function uses the momentum space
+    (Fourier) to calculate the action of the kinetic energy operator.
 
     Parameters
     ----------
-    domain: simulation.HilbertSpace1D
+    ket: GVector
+        The state (e.g. wavefunction) to act on.
+    domain: HilbertSpace1D
         The discretised Hilbert space (domain) of the system.
     time: float
-        The time at which to generate the time-dependent Hamiltonian term.
+        The time at which to evaluate the Hamiltonian.
 
     Returns
     -------
-    sim.RMatrix
-        The time-dependent Hamiltonian term (matrix).
+    CVector
+        The result of acting the Hamiltonian on the given state.
     """
 
-    return np.diag(domain.x_axis, k=0) * np.cos(time)
+    # Construct and apply the kinetic energy operator.
+    p_axis: sim.RVector = cast(
+        sim.RVector, 2 * np.pi * np.fft.fftfreq(domain.num_points, d=domain.x_dx)
+    )
+    ke_operator: sim.RVector = 0.5 * (p_axis**2)
+    ke_ket: sim.CVector = np.fft.ifft(ke_operator * np.fft.fft(ket))
+
+    # Construct and apply the potential energy operator.
+    pe_operator: sim.RVector = 0.5 * (domain.x_axis**2) + (domain.x_axis * np.cos(time))
+    pe_ket: sim.GVector = pe_operator * ket
+
+    return -1j * (ke_ket + pe_ket)
+
+
+def hamiltonian_driven_diff(
+    ket: sim.GVector, domain: sim.HilbertSpace1D, time_1: float, time_2: float
+) -> sim.CVector:
+    """
+    Calculates the difference in the action of the Hamiltonian of a driven
+    harmonic oscillator on a given state, in natural units, at two different
+    times.
+
+    Parameters
+    ----------
+    ket: GVector
+        The state (e.g. wavefunction) to act on.
+    domain: HilbertSpace1D
+        The discretised Hilbert space (domain) of the system.
+    time_1: float
+        The first time at which to evaluate the Hamiltonian.
+    time_2: float
+        The second time at which to evaluate the Hamiltonian.
+
+    Returns
+    -------
+    CVector
+        The result of the difference in acting the Hamiltonian on the given
+        state, at the given two different times.
+    """
+
+    # Construct the potential energy operator.
+    pe_operator_diff: sim.RVector = domain.x_axis * (np.cos(time_1) - np.cos(time_2))
+    pe_ket_diff: sim.GVector = pe_operator_diff * ket
+
+    return cast(sim.CVector, -1j * pe_ket_diff)
