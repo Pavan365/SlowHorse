@@ -78,7 +78,11 @@ def ch_coefficients(
 
 
 def ch_expansion(
-    operator: sim.GMatrix, ket: sim.GVector, coefficients: sim.GVector
+    operator_rs: sim.OperatorRs,
+    domain: sim.HilbertSpace1D,
+    time: float,
+    ket: sim.GVector,
+    coefficients: sim.GVector,
 ) -> sim.GVector:
     """
     Calculates the Chebyshev expansion of an operator acting on a ket through
@@ -87,9 +91,13 @@ def ch_expansion(
 
     Parameters
     ----------
-    operator: simulation.GMatrix
-        The operator (e.g. Hamiltonian) acting on the ket. The eigenvalue
-        domain of the operator should be in the interval [-1, 1].
+    operator_rs: HamiltonianRs
+        A function that returns the action of an operator (e.g. Hamiltonian) on
+        a state, rescaled to the domain [-1, 1].
+    domain: HilbertSpace1D
+        The discretised Hilbert space (domain) of the system.
+    time: float
+        The time at which to evaluate the Hamiltonian
     ket: simulation.GVector
         The ket (e.g. wavefunction) being acted upon by the operator.
     coefficients: simulation.GVector
@@ -109,7 +117,7 @@ def ch_expansion(
 
     # Calculate the first two Chebyshev expansion polynomials.
     polynomial_minus_2: sim.GVector = ket.copy()
-    polynomial_minus_1: sim.GVector = operator @ ket
+    polynomial_minus_1: sim.GVector = operator_rs(ket, domain, time)
 
     # Construct the starting expansion term.
     expansion: sim.GVector = (coefficients[0] * polynomial_minus_2) + (
@@ -119,7 +127,7 @@ def ch_expansion(
     # Construct the complete expansion.
     for i in range(2, order):
         polynomial_n: sim.GVector = (
-            2 * (operator @ polynomial_minus_1)
+            2 * operator_rs(polynomial_minus_1, domain, time)
         ) - polynomial_minus_2
         expansion += coefficients[i] * polynomial_n
 
