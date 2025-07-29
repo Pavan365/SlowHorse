@@ -27,56 +27,6 @@ import simulation as sim
 import propagator as prop
 
 
-def standard_solution(
-    domain: sim.HilbertSpace1D,
-    system: sim.TDSE1D,
-    wavefunction: sim.GVector,
-    time_domain: sim.TimeGrid,
-) -> sim.CVectors:
-    """
-    Calculates the exact wavefunctions for a pure eigenstate of the standard
-    harmonic oscillator (no driving) over a given time domain. This function
-    is used to ensure that the Semi-Global propagator works in the case that
-    the Hamiltonian is time-independent.
-
-    Parameters
-    ----------
-    domain: simulation.HilbertSpace1D
-        The discretised Hilbert space (domain) of the system.
-    system: simulation.TDSE1D
-        The time-dependent Schrödinger equation (TDSE) of the system.
-    wavefunction: simulation.GVector
-        The initial wavefunction of the system.
-    time_domain: simulation.TimeGrid
-        The time domain (grid) over which to calculate the exact wavefunctions.
-
-    Returns
-    -------
-    wavefunctions: simulation.CVectors
-        The exact wavefunctions.
-    """
-
-    assert system.hamiltonian_ti is not None
-
-    # Calculate the energy of the eigenstate.
-    energy: float = cast(
-        float,
-        np.vdot(wavefunction, system.hamiltonian_ti(domain) @ wavefunction).real
-        * domain.x_dx,
-    )
-
-    # Calculate the exact solutions.
-    wavefunctions: sim.CVectors = np.zeros(
-        (time_domain.num_points, domain.num_points), dtype=np.complex128
-    )
-    wavefunctions[0] = wavefunction.copy()
-
-    for i in range(1, time_domain.num_points):
-        wavefunctions[i] = wavefunction * np.exp(-1j * energy * time_domain.t_axis[i])
-
-    return wavefunctions
-
-
 def main():
     # Set up the spatial domain.
     x_lim: float = 10.0
@@ -84,15 +34,8 @@ def main():
 
     domain: sim.HilbertSpace1D = sim.HilbertSpace1D(-x_lim, x_lim, x_num_points)
 
-    # Set up the system.
-    system: sim.TDSE1D = sim.TDSE1D(
-        ho.hamiltonian_standard, ho.hamiltonian_driven, None
-    )
-
     # Set up the wavefunction.
-    assert system.hamiltonian_ti is not None
-
-    hamiltonian: sim.GMatrix = system.hamiltonian_ti(domain)
+    hamiltonian: sim.GMatrix = ho.hamiltonian_standard(domain)
     eigenvalues, eigenvectors = np.linalg.eigh(hamiltonian)
 
     indexes: NDArray[np.int32] = np.argsort(eigenvalues).astype(np.int32)
@@ -100,6 +43,29 @@ def main():
 
     state: int = 0
     wavefunction: sim.GVector = num.norm_wavefunction(eigenvectors[:, state], domain)
+
+    # Set up the system.
+    eigenvalue_min: float = eigenvalues[0]
+    eigenvalue_max: float = eigenvalues[-1]
+
+    def operator(
+        ket: sim.GVector, domain: sim.HilbertSpace1D, time: float
+    ) -> sim.CVector:
+        return -1j * ho.hamiltonian_driven(ket, domain, time)
+
+    def operator_diff(
+        ket: sim.GVector, domain: sim.HilbertSpace1D, time_1: float, time_2: float
+    ) -> sim.CVector:
+        return -1j * ho.hamiltonian_driven_diff(ket, domain, time_1, time_2).astype(
+            np.complex128
+        )
+
+    system: sim.TDSE1D = sim.TDSE1D(
+        operator,
+        operator_diff,
+        eigenvalue_min,
+        eigenvalue_max,
+    )
 
     # Set up the time domain.
     t_min: float = 0.0

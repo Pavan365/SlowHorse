@@ -96,33 +96,15 @@ def wavefunctions_energies(
         The energies of the wavefunctions.
     """
 
+    if wavefunctions.shape[0] != time_domain.num_points:
+        raise ValueError("mismatch between number of wavefunctions and time points")
+
+    # Calculate the energies.
     energies: sim.RVector = np.zeros(wavefunctions.shape[0], dtype=np.float64)
 
-    if system.hamiltonian_ti is None and system.hamiltonian_td is None:
-        raise ValueError("The system must have a Hamiltonian term.")
-
-    # Time-independent energies.
-    if system.hamiltonian_td is None:
-        assert system.hamiltonian_ti is not None
-        hamiltonian: sim.GMatrix = system.hamiltonian_ti(domain)
-
-        for i in range(wavefunctions.shape[0]):
-            energies[i] = np.vdot(wavefunctions[i], hamiltonian @ wavefunctions[i]).real
-
-    # Time-dependent energies,
-    else:
-        if wavefunctions.shape[0] != time_domain.num_points:
-            raise ValueError("mismatch between number of wavefunctions and time points")
-
-        assert system.hamiltonian_ti is not None
-        hamiltonian_ti: sim.GMatrix = system.hamiltonian_ti(domain)
-
-        for i, (wavefunction, time) in enumerate(
-            zip(wavefunctions, time_domain.t_axis)
-        ):
-            hamiltonian: sim.GMatrix = hamiltonian_ti + system.hamiltonian_td(
-                domain, time
-            )
-            energies[i] = np.vdot(wavefunction, hamiltonian @ wavefunction).real
+    for i, (wavefunction, time) in enumerate(zip(wavefunctions, time_domain.t_axis)):
+        energies[i] = np.vdot(
+            wavefunction, system.hamiltonian(wavefunction, domain, time)
+        ).real
 
     return energies
