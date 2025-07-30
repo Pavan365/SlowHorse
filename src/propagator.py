@@ -335,12 +335,12 @@ def propagate(
 
             # Newtonian expansion coefficients.
             else:
-                for j in range(domain.num_points):
-                    # Rescale to a length four domain.
-                    t_nodes_current_d4: sim.RVector = (
-                        4.0 / time_domain.t_dt
-                    ) * t_nodes_current
+                # Rescale to a length four domain.
+                t_nodes_current_d4: sim.RVector = (
+                    4.0 / time_domain.t_dt
+                ) * t_nodes_current
 
+                for j in range(domain.num_points):
                     inhomogeneous_coefficients[:, j] = math.ne_coefficients(
                         t_nodes_current_d4, inhomogeneous_values[:, j]
                     )
@@ -348,7 +348,7 @@ def propagate(
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
             taylor_derivatives: sim.CVectors = (
-                conversion_matrix @ inhomogeneous_coefficients
+                conversion_matrix.T @ inhomogeneous_coefficients
             )
 
             ## NOTE: STEP 2.C.IV
