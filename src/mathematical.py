@@ -251,8 +251,8 @@ def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatri
 
 def ne_coefficients(
     nodes: sim.RVector,
-    function_values: sim.GVector,
-) -> sim.GVector:
+    function_values: sim.GVectors,
+) -> sim.GVectors:
     """
     Calculates the coefficients for a Newtonian interpolation expansion of a
     function through building a divided differences table, which is upper
@@ -264,34 +264,36 @@ def ne_coefficients(
     nodes: simulation.RVector
         The nodes in the target domain that the function being expanded is
         evaluated on.
-    function_values: simulation.GVector
+    function_values: simulation.GVectors
         The values of the function being expanded evaluated on the nodes in
-        the target domain.
+        the target domain. This is expected to be two dimensional, where the
+        expansion is taken to be along the zeroth axis.
 
     Returns
     -------
-    coefficients: simulation.GVector
+    coefficients: simulation.GVectors
         The Newtonian interpolation coefficients.
     """
 
     # Store the number of expansion terms.
     order: int = nodes.shape[0]
+    num_points: int = function_values.shape[1]
 
-    # Set up the divided differences table.
-    table: sim.GMatrix = cast(
-        sim.GMatrix, np.zeros((order, order), dtype=function_values.dtype)
+    # Set up the divided differences tables.
+    tables: sim.GMatrix = cast(
+        sim.GMatrix, np.zeros((order, order, num_points), dtype=function_values.dtype)
     )
-    table[0, :] = function_values
+    tables[0] = function_values
 
-    # Construct the divided differences table (upper triangular).
+    # Construct the divided differences tables (upper triangular).
     for i in range(1, order):
         for j in range(i, order):
-            table[i, j] = (table[i - 1, j] - table[i - 1, j - 1]) / (
+            tables[i, j] = (tables[i - 1, j] - tables[i - 1, j - 1]) / (
                 nodes[j] - nodes[j - i]
             )
 
     # Store the Newtonian interpolation coefficients.
-    coefficients: sim.GVector = table[
+    coefficients: sim.GVector = tables[
         np.arange(order, dtype=np.int32), np.arange(order, dtype=np.int32)
     ]
 

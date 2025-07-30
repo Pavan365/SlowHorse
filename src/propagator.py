@@ -340,10 +340,9 @@ def propagate(
                     4.0 / time_domain.t_dt
                 ) * t_nodes_current
 
-                for j in range(domain.num_points):
-                    inhomogeneous_coefficients[:, j] = math.ne_coefficients(
-                        t_nodes_current_d4, inhomogeneous_values[:, j]
-                    )
+                inhomogeneous_coefficients = math.ne_coefficients(
+                    t_nodes_current_d4, inhomogeneous_values
+                ).astype(np.complex128)
 
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
