@@ -336,8 +336,13 @@ def propagate(
             # Newtonian expansion coefficients.
             else:
                 for j in range(domain.num_points):
+                    # Rescale to a length four domain.
+                    t_nodes_current_d4: sim.RVector = (
+                        4.0 / time_domain.t_dt
+                    ) * t_nodes_current
+
                     inhomogeneous_coefficients[:, j] = math.ne_coefficients(
-                        t_nodes_current, inhomogeneous_values[:, j]
+                        t_nodes_current_d4, inhomogeneous_values[:, j]
                     )
 
             ## NOTE: STEP 2.C.III

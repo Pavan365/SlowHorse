@@ -302,13 +302,15 @@ def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
     """
     Calculates the square (lower triangular) conversion matrix for converting
     Newtonian interpolation coefficients to Taylor-like derivatives, across a
-    time interval.
+    time interval. This function expects the time-axis grid (time points) to
+    be a domain of length four.
 
     Parameters
     ----------
     time_axis: simulation.RVector
         The time-axis grid (time points) from which the Newtonian interpolation
-        coefficients (divided differences) were generated.
+        coefficients were generated. The time points should be from a domain of
+        length four (rescaled otherwise).
 
     Returns
     -------
@@ -336,6 +338,10 @@ def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
 
         # Calculate the m = n term (Semi-Global Appendix C.1).
         conversion[i, i] = conversion[i - 1, i - 1]
+
+    # Account for a length four domain.
+    conversion *= 4 / (time_axis[-1] - time_axis[0])
+    conversion[0, 0] = 1.0
 
     return conversion
 
