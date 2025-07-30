@@ -8,3 +8,4 @@ __pycache__/
 examples/animations
 examples/data
 examples/figures
+examples/performance
