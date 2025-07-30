@@ -253,12 +253,12 @@ def propagate(
     # Calculate the Chebyshev expansion coefficients of the inhomogeneous operator.
     function_coefficients: sim.CVectors = (
         math.ch_coefficients(function_values.T[::-1], dct_type=2)
-        .astype(np.complex128)
+        .astype(np.complex128, copy=False)
         .T
     )
     function_coefficients_next: sim.CVectors = (
         math.ch_coefficients(function_values_next.T[::-1], dct_type=2)
-        .astype(np.complex128)
+        .astype(np.complex128, copy=False)
         .T
     )
 
@@ -331,7 +331,7 @@ def propagate(
             if approximation == ApproximationBasis.CHEBYSHEV:
                 inhomogeneous_coefficients = math.ch_coefficients(
                     inhomogeneous_values[::-1], dct_type=1
-                ).astype(np.complex128)
+                ).astype(np.complex128, copy=False)
 
             # Newtonian expansion coefficients.
             else:
@@ -342,7 +342,7 @@ def propagate(
 
                 inhomogeneous_coefficients = math.ne_coefficients(
                     t_nodes_current_d4, inhomogeneous_values
-                ).astype(np.complex128)
+                ).astype(np.complex128, copy=False)
 
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
@@ -359,7 +359,7 @@ def propagate(
                 wf_guesses[0],
                 taylor_derivatives,
                 (order_m + 1),
-            ).astype(np.complex128)
+            ).astype(np.complex128, copy=False)
 
             ## NOTE: STEP 2.C.V
             # Store the previous guess wavefunction.
@@ -377,7 +377,7 @@ def propagate(
                     t_mid,
                     lambdas[-1],
                     function_coefficients[j],
-                ).astype(np.complex128)
+                ).astype(np.complex128, copy=False)
 
                 # Calculate the truncated Taylor expansion.
                 taylor_term: sim.CVector = np.zeros(
@@ -403,8 +403,8 @@ def propagate(
 
             # NOTE: DIAGNOSTIC
             # Print diagnostic information.
-            print(f"Time Index: {i} \t Iteration: {count}")
-            print(f"Convergence: {convergence:.5e}")
+            # print(f"Time Index: {i} \t Iteration: {count}")
+            # print(f"Convergence: {convergence:.5e}")
 
         # If convergence failed, raise an error.
         if count >= max_iters:
@@ -431,7 +431,7 @@ def propagate(
                     t_mid,
                     lambdas[-1],
                     function_coefficients_next[j],
-                ).astype(np.complex128)
+                ).astype(np.complex128, copy=False)
 
                 # Calculate the truncated Taylor expansion.
                 taylor_term_next: sim.CVector = np.zeros(
