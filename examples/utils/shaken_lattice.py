@@ -1,5 +1,6 @@
 """
-Functions for setting up a harmonic oscillator system.
+Functions for setting up a 1 dimensional shaken lattice interferometer (SLI)
+system.
 """
 
 # Add source directory to path.
@@ -19,18 +20,23 @@ import numpy as np
 # Import local modules.
 import simulation as sim
 
+# Global constants.
+PE_DEPTH: float = 5.0
 
-def hamiltonian_standard(domain: sim.HilbertSpace1D) -> sim.RMatrix:
+
+def hamiltonian_matrix(domain: sim.HilbertSpace1D, time: float) -> sim.RMatrix:
     """
-    Generates the Hamiltonian of a standard harmonic oscillator in natural
-    units. This function uses a fourth-order central difference approximation
-    to construct the kinetic energy operator in position space. This function
-    also enforces periodic boundaries.
+    Generates the Hamiltonian of a 1 dimensional shaken lattice interferometer
+    (SLI) system, in natural units. This function uses a fourth-order central
+    difference approximation to construct the kinetic energy operator in
+    position space.
 
     Parameters
     ----------
     domain: simulation.HilbertSpace1D
         The discretised Hilbert space (domain) of the system.
+    time: float
+        The time at which to evaluate the Hamiltonian.
 
     Returns
     -------
@@ -73,19 +79,25 @@ def hamiltonian_standard(domain: sim.HilbertSpace1D) -> sim.RMatrix:
     ke_operator[1, -1] = ke_coeff_diag_2
 
     # Construct the potential energy operator.
-    pe_diag: sim.RVector = 0.5 * (domain.x_axis**2)
+    pe_depth: float = PE_DEPTH
+    pe_phase: float = shaking(time)
+
+    pe_diag: sim.RVector = (-pe_depth / 2) * np.cos(
+        (2 * np.pi * domain.x_axis) + pe_phase
+    )
     pe_operator: sim.RMatrix = np.diag(pe_diag, k=0)
 
     return ke_operator + pe_operator
 
 
-def hamiltonian_driven(
+def hamiltonian(
     ket: sim.GVector, domain: sim.HilbertSpace1D, time: float
 ) -> sim.CVector:
     """
-    Calculates the action of the Hamiltonian of a driven harmonic oscillator on
-    a given state, in natural units. This function uses the momentum space
-    (Fourier) to calculate the action of the kinetic energy operator.
+    Calculates the action of the Hamiltonian of a 1 dimensional shaken lattice
+    interferometer (SLI) system on a given state, in natural units. This
+    function uses the momentum space (Fourier) to calculate the action of the
+    kinetic energy operator.
 
     Parameters
     ----------
@@ -110,19 +122,24 @@ def hamiltonian_driven(
     ke_ket: sim.CVector = np.fft.ifft(ke_operator * np.fft.fft(ket))
 
     # Construct and apply the potential energy operator.
-    pe_operator: sim.RVector = 0.5 * (domain.x_axis**2) + (domain.x_axis * np.cos(time))
+    pe_depth: float = PE_DEPTH
+    pe_phase: float = shaking(time)
+
+    pe_operator: sim.RVector = (-pe_depth / 2) * np.cos(
+        (2 * np.pi * domain.x_axis) + pe_phase
+    )
     pe_ket: sim.GVector = pe_operator * ket
 
     return ke_ket + pe_ket
 
 
-def hamiltonian_driven_diff(
+def hamiltonian_diff(
     ket: sim.GVector, domain: sim.HilbertSpace1D, time_1: float, time_2: float
 ) -> sim.GVector:
     """
-    Calculates the difference in the action of the Hamiltonian of a driven
-    harmonic oscillator on a given state, in natural units, at two different
-    times.
+    Calculates the difference in the action of the Hamiltonian of a 1
+    dimensional shaken lattice interferometer (SLI) system on a given state, in
+    natural units, at two different times.
 
     Parameters
     ----------
@@ -143,7 +160,40 @@ def hamiltonian_driven_diff(
     """
 
     # Construct the potential energy operator.
-    pe_operator_diff: sim.RVector = domain.x_axis * (np.cos(time_1) - np.cos(time_2))
-    pe_ket_diff: sim.GVector = pe_operator_diff * ket
+    pe_depth: float = PE_DEPTH
 
-    return pe_ket_diff
+    pe_phase_1: float = shaking(time_1)
+    pe_phase_2: float = shaking(time_2)
+
+    pe_operator_1: sim.RVector = (-pe_depth / 2) * np.cos(
+        (2 * np.pi * domain.x_axis) + pe_phase_1
+    )
+    pe_operator_2: sim.RVector = (-pe_depth / 2) * np.cos(
+        (2 * np.pi * domain.x_axis) + pe_phase_2
+    )
+    pe_operator_diff: sim.RVector = pe_operator_1 - pe_operator_2
+
+    return pe_operator_diff * ket
+
+
+def shaking(time: float) -> float:
+    """
+    Evaluates the shaking function (phase modulation) for a 1 dimensional
+    shaken lattice interferometer (SLI) system, at a given time.
+
+    Parameters
+    ----------
+    time: float
+        The time at which to evaluate the shaking function.
+
+    Returns
+    -------
+    float
+        The evaluated shaking function.
+    """
+
+    # Set constants.
+    amplitude: float = 0.2
+    period: float = 50.0
+
+    return amplitude * (np.sin((np.pi * time) / period) ** 2)

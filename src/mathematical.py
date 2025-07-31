@@ -78,7 +78,11 @@ def ch_coefficients(
 
 
 def ch_expansion(
-    operator: sim.GMatrix, ket: sim.GVector, coefficients: sim.GVector
+    operator_rs: sim.OperatorRs,
+    domain: sim.HilbertSpace1D,
+    time: float,
+    ket: sim.GVector,
+    coefficients: sim.GVector,
 ) -> sim.GVector:
     """
     Calculates the Chebyshev expansion of an operator acting on a ket through
@@ -87,9 +91,13 @@ def ch_expansion(
 
     Parameters
     ----------
-    operator: simulation.GMatrix
-        The operator (e.g. Hamiltonian) acting on the ket. The eigenvalue
-        domain of the operator should be in the interval [-1, 1].
+    operator_rs: HamiltonianRs
+        A function that returns the action of an operator (e.g. Hamiltonian) on
+        a state, rescaled to the domain [-1, 1].
+    domain: HilbertSpace1D
+        The discretised Hilbert space (domain) of the system.
+    time: float
+        The time at which to evaluate the operator.
     ket: simulation.GVector
         The ket (e.g. wavefunction) being acted upon by the operator.
     coefficients: simulation.GVector
@@ -109,7 +117,7 @@ def ch_expansion(
 
     # Calculate the first two Chebyshev expansion polynomials.
     polynomial_minus_2: sim.GVector = ket.copy()
-    polynomial_minus_1: sim.GVector = operator @ ket
+    polynomial_minus_1: sim.GVector = operator_rs(ket, domain, time)
 
     # Construct the starting expansion term.
     expansion: sim.GVector = (coefficients[0] * polynomial_minus_2) + (
@@ -119,7 +127,7 @@ def ch_expansion(
     # Construct the complete expansion.
     for i in range(2, order):
         polynomial_n: sim.GVector = (
-            2 * (operator @ polynomial_minus_1)
+            2 * operator_rs(polynomial_minus_1, domain, time)
         ) - polynomial_minus_2
         expansion += coefficients[i] * polynomial_n
 
@@ -243,8 +251,8 @@ def ch_ta_conversion(order: int, time_min: float, time_max: float) -> sim.RMatri
 
 def ne_coefficients(
     nodes: sim.RVector,
-    function_values: sim.GVector,
-) -> sim.GVector:
+    function_values: sim.GVectors,
+) -> sim.GVectors:
     """
     Calculates the coefficients for a Newtonian interpolation expansion of a
     function through building a divided differences table, which is upper
@@ -256,34 +264,36 @@ def ne_coefficients(
     nodes: simulation.RVector
         The nodes in the target domain that the function being expanded is
         evaluated on.
-    function_values: simulation.GVector
+    function_values: simulation.GVectors
         The values of the function being expanded evaluated on the nodes in
-        the target domain.
+        the target domain. This is expected to be two dimensional, where the
+        expansion is taken to be along the zeroth axis.
 
     Returns
     -------
-    coefficients: simulation.GVector
+    coefficients: simulation.GVectors
         The Newtonian interpolation coefficients.
     """
 
     # Store the number of expansion terms.
     order: int = nodes.shape[0]
+    num_points: int = function_values.shape[1]
 
-    # Set up the divided differences table.
-    table: sim.GMatrix = cast(
-        sim.GMatrix, np.zeros((order, order), dtype=function_values.dtype)
+    # Set up the divided differences tables.
+    tables: sim.GMatrix = cast(
+        sim.GMatrix, np.zeros((order, order, num_points), dtype=function_values.dtype)
     )
-    table[0, :] = function_values
+    tables[0] = function_values
 
-    # Construct the divided differences table (upper triangular).
+    # Construct the divided differences tables (upper triangular).
     for i in range(1, order):
         for j in range(i, order):
-            table[i, j] = (table[i - 1, j] - table[i - 1, j - 1]) / (
+            tables[i, j] = (tables[i - 1, j] - tables[i - 1, j - 1]) / (
                 nodes[j] - nodes[j - i]
             )
 
     # Store the Newtonian interpolation coefficients.
-    coefficients: sim.GVector = table[
+    coefficients: sim.GVector = tables[
         np.arange(order, dtype=np.int32), np.arange(order, dtype=np.int32)
     ]
 
@@ -294,13 +304,15 @@ def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
     """
     Calculates the square (lower triangular) conversion matrix for converting
     Newtonian interpolation coefficients to Taylor-like derivatives, across a
-    time interval.
+    time interval. This function expects the time-axis grid (time points) to
+    be a domain of length four.
 
     Parameters
     ----------
     time_axis: simulation.RVector
         The time-axis grid (time points) from which the Newtonian interpolation
-        coefficients (divided differences) were generated.
+        coefficients were generated. The time points should be from a domain of
+        length four (rescaled otherwise).
 
     Returns
     -------
@@ -311,6 +323,9 @@ def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
     # Store the number of expansion terms.
     order: int = time_axis.shape[0]
 
+    # Account for the length four domain.
+    domain_factor: float = 4.0 / (time_axis[-1] - time_axis[0])
+
     # Set up the conversion matrix.
     conversion: sim.RMatrix = np.zeros((order, order), dtype=np.float64)
     conversion[0, 0] = 1.0
@@ -318,16 +333,16 @@ def ne_ta_conversion(time_axis: sim.RVector) -> sim.RMatrix:
     # Construct the complete matrix.
     for i in range(1, order):
         # Calculate the m = 0 term (Semi-Global Appendix C.1).
-        conversion[i, 0] = -time_axis[i - 1] * conversion[i - 1, 0]
+        conversion[i, 0] = -domain_factor * time_axis[i - 1] * conversion[i - 1, 0]
 
         # Calculate the 1 <= m <= n - 1 terms (Semi-Global Appendix C.1).
         for j in range(1, i):
-            conversion[i, j] = conversion[i - 1, j - 1] - (
-                time_axis[i - 1] * conversion[i - 1, j]
+            conversion[i, j] = domain_factor * (
+                conversion[i - 1, j - 1] - (time_axis[i - 1] * conversion[i - 1, j])
             )
 
         # Calculate the m = n term (Semi-Global Appendix C.1).
-        conversion[i, i] = conversion[i - 1, i - 1]
+        conversion[i, i] = domain_factor * conversion[i - 1, i - 1]
 
     return conversion
 
@@ -360,7 +375,9 @@ def rescale_matrix(
     """
 
     # Get the eigenvalues.
-    eigenvalues: sim.RVector = np.sort(np.linalg.eigvalsh(matrix)).astype(np.float64)
+    eigenvalues: sim.RVector = np.sort(np.linalg.eigvalsh(matrix)).astype(
+        np.float64, copy=False
+    )
     eigenvalues_min: float = eigenvalues[0]
     eigenvalues_max: float = eigenvalues[-1]
 

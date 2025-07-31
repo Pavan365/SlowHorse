@@ -3,7 +3,7 @@ Classes for setting up simulations.
 """
 
 # Import standard modules.
-from typing import Callable, Optional, TypeAlias
+from typing import Callable, TypeAlias
 
 # Import external modules.
 import numpy as np
@@ -71,9 +71,17 @@ class HilbertSpace1D:
 
 
 # Type aliases for time-dependent Schrödinger equation terms.
-HamiltonianTI: TypeAlias = Callable[[HilbertSpace1D], GMatrix]
-HamiltonianTD: TypeAlias = Callable[[HilbertSpace1D, float], GMatrix]
-InhomogeneousTerm: TypeAlias = Callable[[HilbertSpace1D, float], GVector]
+Operator: TypeAlias = Callable[[GVector, HilbertSpace1D, float], GVector]
+OperatorRs: TypeAlias = Callable[[GVector, HilbertSpace1D, float], GVector]
+OperatorDiff: TypeAlias = Callable[
+    [
+        GVector,
+        HilbertSpace1D,
+        float,
+        float,
+    ],
+    GVector,
+]
 
 
 class TDSE1D:
@@ -82,40 +90,78 @@ class TDSE1D:
 
     Attributes
     ----------
-    hamiltonian_ti: Optional[HamiltonianTI]
-        A function that returns a Hamiltonian term that is time-independent.
-    hamiltonian_td: Optional[HamiltonianTD]
-        A function that returns a Hamiltonian term that is time-dependent.
-    inhomogeneous_term: Optional[InhomogeneousTerm]
-        A function that returns an inhomogeneous term.
+    hamiltonian: Operator
+        A function that returns the action of a Hamiltonian on a state.
+    hamiltonian_rs: OperatorRs
+        A function that returns the action of a Hamiltonian on a state,
+        rescaled to the domain [-1, 1].
+    hamiltonian_diff: OperatorDiff
+        A function that returns the difference in the action of a Hamiltonian
+        on a state, at two different times.
+    eigenvalue_min: float
+        The minimum eigenvalue of the Hamiltonian (approximate).
+    eigenvalue_max: float
+        The maximum eigenvalue of the Hamiltonian (approximate).
     """
 
     def __init__(
         self,
-        hamiltonian_ti: Optional[HamiltonianTI] = None,
-        hamiltonian_td: Optional[HamiltonianTD] = None,
-        inhomogeneous_term: Optional[InhomogeneousTerm] = None,
+        hamiltonian: Operator,
+        hamiltonian_diff: OperatorDiff,
+        eigenvalue_min: float,
+        eigenvalue_max: float,
     ) -> None:
         """
         Initialises an instance of the TDSE1D class.
 
         Parameters
         ----------
-        hamiltonian_ti: Optional[HamiltonianTI]
-            A function that returns a Hamiltonian term that is time-independent.
-        hamiltonian_td: Optional[HamiltonianTD]
-            A function that returns a Hamiltonian term that is time-dependent.
-        inhomogeneous_term: Optional[InhomogeneousTerm]
-            A function that returns an inhomogeneous term.
+        hamiltonian: Hamiltonian
+            A function that returns the action of a Hamiltonian on a state.
+        hamiltonian_diff: HamiltonianDiff
+            A function that returns the difference in the action of a
+            Hamiltonian on a state, at two different times.
+        eigenvalue_min: float
+            The minimum eigenvalue of the Hamiltonian (approximate).
+        eigenvalue_max: float
+            The maximum eigenvalue of the Hamiltonian (approximate).
         """
 
-        if hamiltonian_ti is None and hamiltonian_td is None:
-            raise ValueError("a Hamiltonian function must be provided")
-
         # Assign attributes.
-        self.hamiltonian_ti: Optional[HamiltonianTI] = hamiltonian_ti
-        self.hamiltonian_td: Optional[HamiltonianTD] = hamiltonian_td
-        self.inhomogeneous_term: Optional[InhomogeneousTerm] = inhomogeneous_term
+        self.hamiltonian: Operator = hamiltonian
+        self.hamiltonian_diff: OperatorDiff = hamiltonian_diff
+
+        self.eigenvalue_min: float = eigenvalue_min
+        self.eigenvalue_max: float = eigenvalue_max
+
+    def hamiltonian_rs(
+        self, ket: GVector, domain: HilbertSpace1D, time: float
+    ) -> GVector:
+        """
+        Calculates the action of the Hamiltonian on a state, rescaled to the
+        domain [-1, 1]. This is useful when performing a Chebyshev expansion of
+        the Hamiltonian operator.
+
+        Parameters
+        ----------
+        ket: GVector
+            The state (e.g. wavefunction) to act on.
+        domain: HilbertSpace1D
+            The discretised Hilbert space (domain) of the system.
+        time: float
+            The time at which to evaluate the Hamiltonian.
+
+        Returns
+        -------
+        GVector
+            The result of acting the Hamiltonian on the given state, rescaled
+            to the domain [-1, 1].
+        """
+
+        return (
+            (2 * self.hamiltonian(ket, domain, time))
+            - ((self.eigenvalue_min + self.eigenvalue_max) * ket)
+        ) / (self.eigenvalue_max - self.eigenvalue_min)
 
 
 class TimeGrid:

@@ -105,8 +105,13 @@ def inhomogeneous_operator(
 
 
 def inhomogeneous_kets(
-    operator: sim.GMatrix, ket: sim.GVector, derivatives: sim.GVectors, order: int
-) -> sim.GVectors:
+    operator: sim.Operator,
+    domain: sim.HilbertSpace1D,
+    time: float,
+    ket: sim.GVector,
+    derivatives: sim.GVectors,
+    order: int,
+) -> sim.CVectors:
     """
     Calculates the inhomogeneous kets which represent time-evolved states with
     corrections from time derivatives of an inhomogeneous term. The derivatives
@@ -117,8 +122,13 @@ def inhomogeneous_kets(
 
     Parameters
     ----------
-    operator: simulation.GMatrix
-        The operator (e.g. Hamiltonian) acting on the ket.
+    operator: simulation.Operator
+        A function that returns the action of an operator (e.g. Hamiltonian) on
+        a state.
+    domain: HilbertSpace1D
+        The discretised Hilbert space (domain) of the system.
+    time: float
+        The time at which to evaluate the operator.
     ket: simulation.GVector
         The ket (e.g. wavefunction) being acted upon by the operator.
     derivatives: simulation.GVectors
@@ -134,14 +144,12 @@ def inhomogeneous_kets(
     """
 
     # Set up the inhomogeneous kets.
-    kets: sim.GVectors = np.zeros(
-        (order, ket.shape[0]), dtype=np.result_type(operator, ket, derivatives)
-    )
+    kets: sim.CVectors = np.zeros((order, ket.shape[0]), dtype=np.complex128)
     kets[0] = ket.copy()
 
     # Calculate the inhomogeneous kets.
     for i in range(1, order):
-        kets[i] = ((operator @ kets[i - 1]) + derivatives[i - 1]) / i
+        kets[i] = (operator(kets[i - 1], domain, time) + derivatives[i - 1]) / i
 
     return kets
 
@@ -193,18 +201,80 @@ def propagate(
         The propagated wavefunctions.
     """
 
-    assert system.hamiltonian_ti is not None
-    assert system.hamiltonian_td is not None
-
     ## NOTE: GLOBAL PRE-COMPUTATIONS
-    # Store the time-independent Hamiltonian term.
-    hamiltonian_ti: sim.GMatrix = system.hamiltonian_ti(domain)
-
     # Create a vector to store the wavefunctions.
     wavefunctions: sim.CVectors = np.zeros(
         (time_domain.num_points, domain.num_points), dtype=np.complex128
     )
     wavefunctions[0] = wavefunction.copy()
+
+    # Set up the Chebyshev-Gauss and Chebyshev-Lobatto nodes.
+    cg_nodes: sim.RVector = math.ch_gauss_nodes(order_f)
+    cl_nodes: sim.RVector = math.ch_lobatto_nodes(order_m)
+
+    # Set up the entire time grid of Chebyshev-Lobatto nodes.
+    cl_nodes_rs: sim.RVector = math.rescale_vector(
+        cl_nodes, time_domain.t_axis[0], time_domain.t_axis[1]
+    )[0]
+
+    t_nodes: sim.RVector = np.zeros(
+        (((order_m - 1) * (time_domain.num_points - 1)) + 1), dtype=np.float64
+    )
+    t_nodes[0] = time_domain.t_axis[0]
+    t_nodes[1:] = (
+        cl_nodes_rs[1::]
+        + (np.arange(time_domain.num_points - 1) * time_domain.t_dt).reshape(-1, 1)
+    ).flatten(order="C")
+
+    # Set up the Chebyshev-Gauss nodes for expanding the inhomogeneous operator.
+    f_nodes: sim.RVector = math.rescale_vector(
+        cg_nodes, system.eigenvalue_min, system.eigenvalue_max
+    )[0]
+
+    # Evaluate the inhomogeneous operator on the first two time intervals.
+    # These can be reused because the effective delta-time is constant.
+    function_values: sim.CVectors = np.zeros((order_m, order_f), dtype=np.complex128)
+    function_values_next: sim.CVectors = np.zeros(
+        (order_m, order_f), dtype=np.complex128
+    )
+
+    for i in range(order_m):
+        function_values[i] = inhomogeneous_operator(
+            f_nodes, t_nodes[i], order_m, threshold=1e-2, tolerance=1e-16
+        )
+        function_values_next[i] = inhomogeneous_operator(
+            f_nodes,
+            t_nodes[i + (order_m - 1)],
+            order_m,
+            threshold=1e-2,
+            tolerance=1e-16,
+        )
+
+    # Calculate the Chebyshev expansion coefficients of the inhomogeneous operator.
+    function_coefficients: sim.CVectors = (
+        math.ch_coefficients(function_values.T[::-1], dct_type=2)
+        .astype(np.complex128, copy=False)
+        .T
+    )
+    function_coefficients_next: sim.CVectors = (
+        math.ch_coefficients(function_values_next.T[::-1], dct_type=2)
+        .astype(np.complex128, copy=False)
+        .T
+    )
+
+    # Generate the conversion matrix.
+    # To convert expansion coefficients to Taylor-like derivatives.
+    conversion_matrix: sim.RMatrix = np.zeros((order_m, order_m), dtype=np.float64)
+
+    # Chebyshev expansion conversion.
+    if approximation == ApproximationBasis.CHEBYSHEV:
+        conversion_matrix = math.ch_ta_conversion(
+            order_m, time_domain.t_axis[0], time_domain.t_axis[1]
+        )
+
+    # Newtonian expansion conversion.
+    else:
+        conversion_matrix = math.ne_ta_conversion(cl_nodes_rs)
 
     ## NOTE: STEP 1
     # Set the guess wavefunctions for the first time step.
@@ -218,50 +288,13 @@ def propagate(
     for i in range(time_domain.num_points - 1):
         ## NOTE: STEP 2.A
         # Store the time interval information.
-        t_start: float = time_domain.t_axis[i]
-        t_final: float = time_domain.t_axis[i + 1]
-
-        t_mid: float = (t_start + t_final) / 2
+        t_start_idx: int = i * (order_m - 1)
+        t_final_idx: int = (order_m - 1) + (i * (order_m - 1))
 
         ## NOTE: LOCAL PRE-COMPUTES (TIME-INTERVAL SPECIFIC)
-        # Set up the Chebyshev-Lobatto nodes.
-        t_nodes: sim.RVector = math.ch_lobatto_nodes(order_m)
-        t_nodes: sim.RVector = math.rescale_vector(t_nodes, t_start, t_final)[0]
-
-        # Store the time-dependent Hamiltonian term (midpoint).
-        hamiltonian_mid: sim.GMatrix = system.hamiltonian_td(domain, t_mid)
-
-        # Set up the Hamiltonian for the time interval.
-        hamiltonian: sim.GMatrix = hamiltonian_ti + hamiltonian_mid
-        hamiltonian_rs, h_scale, h_shift = math.rescale_matrix(hamiltonian, -1.0, 1.0)
-
-        hamiltonian_i: sim.CMatrix = -1j * hamiltonian.astype(np.complex128)
-        hamiltonian_rs_i: sim.CMatrix = -1j * hamiltonian_rs.astype(np.complex128)
-
-        # Set up the Hamiltonian differences for the time interval.
-        hamiltonian_diffs: sim.CMatrices = np.zeros(
-            (order_m, domain.num_points, domain.num_points), dtype=np.complex128
-        )
-        for j in range(order_m):
-            hamiltonian_diffs[j] = (
-                system.hamiltonian_td(domain, t_nodes[j]) - hamiltonian_mid
-            )
-
-        # Set up the Chebyshev-Gauss nodes for expanding the inhomogeneous operator.
-        f_nodes: sim.RVector = math.ch_gauss_nodes(order_f)
-        f_nodes: sim.RVector = (f_nodes - h_shift) / h_scale
-
-        # Generate the conversion matrix.
-        # To convert expansion coefficients to Taylor-like derivatives.
-        conversion_matrix: sim.RMatrix = np.zeros((order_m, order_m), dtype=np.float64)
-
-        # Chebyshev expansion conversion.
-        if approximation == ApproximationBasis.CHEBYSHEV:
-            conversion_matrix = math.ch_ta_conversion(order_m, t_start, t_final)
-
-        # Newtonian expansion conversion.
-        else:
-            conversion_matrix = math.ne_ta_conversion(t_nodes)
+        # Store the Chebyshev-Lobatto nodes.
+        t_nodes_current: sim.RVector = t_nodes[t_start_idx : (t_final_idx + 1)]
+        t_mid = t_nodes_current[order_m // 2]
 
         # Set up the inhomogeneous kets (variable scoping).
         lambdas: sim.CVectors = np.zeros(
@@ -284,7 +317,9 @@ def propagate(
                 (order_m, domain.num_points), dtype=np.complex128
             )
             for j in range(order_m):
-                inhomogeneous_values[j] = -1j * (hamiltonian_diffs[j] @ wf_guesses[j])
+                inhomogeneous_values[j] = system.hamiltonian_diff(
+                    wf_guesses[j], domain, t_nodes_current[j], t_mid
+                )
 
             ## NOTE: STEP 2.C.II
             # Calculate the expansion coefficients of the inhomogeneous terms.
@@ -296,26 +331,35 @@ def propagate(
             if approximation == ApproximationBasis.CHEBYSHEV:
                 inhomogeneous_coefficients = math.ch_coefficients(
                     inhomogeneous_values[::-1], dct_type=1
-                ).astype(np.complex128)
+                ).astype(np.complex128, copy=False)
 
             # Newtonian expansion coefficients.
             else:
-                for j in range(domain.num_points):
-                    inhomogeneous_coefficients[:, j] = math.ne_coefficients(
-                        t_nodes, inhomogeneous_values[:, j]
-                    )
+                # Rescale to a length four domain.
+                t_nodes_current_d4: sim.RVector = (
+                    4.0 / time_domain.t_dt
+                ) * t_nodes_current
+
+                inhomogeneous_coefficients = math.ne_coefficients(
+                    t_nodes_current_d4, inhomogeneous_values
+                ).astype(np.complex128, copy=False)
 
             ## NOTE: STEP 2.C.III
             # Calculate the Taylor-like derivative terms.
             taylor_derivatives: sim.CVectors = (
-                conversion_matrix @ inhomogeneous_coefficients
+                conversion_matrix.T @ inhomogeneous_coefficients
             )
 
             ## NOTE: STEP 2.C.IV
             # Calculate the inhomogeneous kets (lambdas).
             lambdas: sim.CVectors = inhomogeneous_kets(
-                hamiltonian_i, wf_guesses[0], taylor_derivatives, (order_m + 1)
-            ).astype(np.complex128)
+                system.hamiltonian,
+                domain,
+                t_mid,
+                wf_guesses[0],
+                taylor_derivatives,
+                (order_m + 1),
+            ).astype(np.complex128, copy=False)
 
             ## NOTE: STEP 2.C.V
             # Store the previous guess wavefunction.
@@ -325,18 +369,15 @@ def propagate(
             # Build the next set of guess wavefunctions.
             for j in range(1, order_m):
                 # Store the time interval information.
-                t_dt_m = t_nodes[j] - t_nodes[0]
-
-                function_values: sim.CVector = inhomogeneous_operator(
-                    f_nodes, t_dt_m, order_m, threshold=1e-2, tolerance=1e-16
-                )
-                function_coefficients: sim.CVector = math.ch_coefficients(
-                    function_values[::-1], dct_type=2
-                ).astype(np.complex128)
+                t_dt_m = t_nodes[j]
 
                 operator_term: sim.CVector = math.ch_expansion(
-                    hamiltonian_rs_i, lambdas[-1], function_coefficients
-                ).astype(np.complex128)
+                    system.hamiltonian_rs,
+                    domain,
+                    t_mid,
+                    lambdas[-1],
+                    function_coefficients[j],
+                ).astype(np.complex128, copy=False)
 
                 # Calculate the truncated Taylor expansion.
                 taylor_term: sim.CVector = np.zeros(
@@ -362,8 +403,8 @@ def propagate(
 
             # NOTE: DIAGNOSTIC
             # Print diagnostic information.
-            print(f"Time Index: {i} \t Iteration: {count}")
-            print(f"Convergence: {convergence:.5e}")
+            # print(f"Time Index: {i} \t Iteration: {count}")
+            # print(f"Convergence: {convergence:.5e}")
 
         # If convergence failed, raise an error.
         if count >= max_iters:
@@ -376,35 +417,21 @@ def propagate(
         ## NOTE: STEP 2.F
         # Calculate the guess wavefunctions for the next time interval.
         if i < time_domain.num_points - 2:
-            # Store the next time interval information.
-            t_start_next: float = time_domain.t_axis[i + 1]
-            t_final_next: float = time_domain.t_axis[i + 2]
-
-            # Set up the Chebyshev-Lobatto nodes.
-            t_nodes_next: sim.RVector = math.ch_lobatto_nodes(order_m)
-            t_nodes_next: sim.RVector = math.rescale_vector(
-                t_nodes_next, t_start_next, t_final_next
-            )[0]
-
             # Set the first guess wavefunction.
             wf_guesses[0] = wf_guesses[-1].copy()
 
             # Build the next set of guess wavefunctions.
             for j in range(1, order_m):
                 # Store the time interval information.
-                t_dt_next_m = t_nodes_next[j] - t_nodes[0]
-
-                # Calculate the Chebyshev expansion of the inhomogeneous operator.
-                function_values_next: sim.CVector = inhomogeneous_operator(
-                    f_nodes, t_dt_next_m, order_m, threshold=1e-2, tolerance=1e-16
-                )
-                function_coefficients_next: sim.CVector = math.ch_coefficients(
-                    function_values_next[::-1], dct_type=2
-                ).astype(np.complex128)
+                t_dt_next_m = t_nodes[j] + time_domain.t_dt
 
                 operator_term_next: sim.CVector = math.ch_expansion(
-                    hamiltonian_rs_i, lambdas[-1], function_coefficients_next
-                ).astype(np.complex128)
+                    system.hamiltonian_rs,
+                    domain,
+                    t_mid,
+                    lambdas[-1],
+                    function_coefficients_next[j],
+                ).astype(np.complex128, copy=False)
 
                 # Calculate the truncated Taylor expansion.
                 taylor_term_next: sim.CVector = np.zeros(

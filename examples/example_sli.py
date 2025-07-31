@@ -1,6 +1,6 @@
 """
-Example use case of the Semi-Global propagation scheme using a driven harmonic
-oscillator system.
+Example use case of the Semi-Global propagation scheme using a 1 dimensional
+shaken lattice interferometer (SLI) system.
 """
 
 # Add source directory to path.
@@ -11,14 +11,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "s
 
 # Import standard modules.
 import time
-from typing import cast
 
 # Import external modules.
 import numpy as np
 from numpy.typing import NDArray
 
 # Import local modules.
-import utils.harmonic_oscillator as ho
+import utils.shaken_lattice as sli
 import utils.numerical as num
 import utils.visualisation as vis
 
@@ -29,20 +28,22 @@ import propagator as prop
 
 def main():
     # Set up the spatial domain.
-    x_lim: float = 10.0
+    x_lim: float = 20.0
     x_num_points: int = 512
 
     domain: sim.HilbertSpace1D = sim.HilbertSpace1D(-x_lim, x_lim, x_num_points)
 
     # Set up the wavefunction.
-    hamiltonian: sim.GMatrix = ho.hamiltonian_standard(domain)
+    hamiltonian: sim.GMatrix = sli.hamiltonian_matrix(domain, 0.0)
     eigenvalues, eigenvectors = np.linalg.eigh(hamiltonian)
 
     indexes: NDArray[np.int32] = np.argsort(eigenvalues).astype(np.int32)
     eigenvalues, eigenvectors = eigenvalues[indexes], eigenvectors[:, indexes]
 
-    state: int = 0
-    wavefunction: sim.GVector = num.norm_wavefunction(eigenvectors[:, state], domain)
+    wavefunction: sim.RVector = np.exp(-(domain.x_axis**2) / 2)
+    wavefunction: sim.RVector = num.norm_wavefunction(wavefunction, domain).astype(
+        np.float64
+    )
 
     # Set up the system.
     eigenvalue_min: float = eigenvalues[0]
@@ -51,12 +52,12 @@ def main():
     def operator(
         ket: sim.GVector, domain: sim.HilbertSpace1D, time: float
     ) -> sim.CVector:
-        return -1j * ho.hamiltonian_driven(ket, domain, time)
+        return -1j * sli.hamiltonian(ket, domain, time)
 
     def operator_diff(
         ket: sim.GVector, domain: sim.HilbertSpace1D, time_1: float, time_2: float
     ) -> sim.CVector:
-        return -1j * ho.hamiltonian_driven_diff(ket, domain, time_1, time_2).astype(
+        return -1j * sli.hamiltonian_diff(ket, domain, time_1, time_2).astype(
             np.complex128
         )
 
@@ -102,7 +103,7 @@ def main():
     print(f"Runtime: {runtime:.2f} seconds")
 
     # Save the wavefunctions.
-    filename: str = "example_harmonic"
+    filename: str = "example_sli"
     np.savetxt(f"data/{filename}.txt", wavefunctions)
 
     # Calculate the norms and energies.
@@ -114,21 +115,6 @@ def main():
     # Print the max deviation in the norms and energies.
     print(f"Max Norm Deviation: {np.max(np.abs(norms[0] - norms)):.2e}")
     print(f"Max Energy Deviation: {np.max(np.abs(energies[0] - energies)):.2e}")
-
-    # Calculate the error from the exact solution.
-    expectation_x: sim.RVector = cast(
-        sim.RVector,
-        np.trapezoid(
-            ((np.abs(wavefunctions) ** 2) * domain.x_axis), dx=domain.x_dx, axis=1
-        ),
-    )
-    expectation_x_exact: sim.RVector = (
-        -0.5 * np.sin(time_domain.t_axis) * time_domain.t_axis
-    )
-    error: sim.RVector = expectation_x - expectation_x_exact
-
-    # Print the max error from the exact solution.
-    print(f"Max Error: {np.abs(np.max(error)):.2e}")
 
     # Generate figures and animation.
     vis.plot_wavefunctions(
