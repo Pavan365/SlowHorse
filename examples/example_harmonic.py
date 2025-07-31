@@ -69,19 +69,19 @@ def main():
 
     # Set up the time domain.
     t_min: float = 0.0
-    t_max: float = 1.0
+    t_max: float = 10.0
 
-    t_num_points: int = 1000
+    t_num_points: int = 10000
     t_num_points += 1
 
     time_domain: sim.TimeGrid = sim.TimeGrid(t_min, t_max, t_num_points)
 
     # Set up the simulation.
-    order_m: int = 5
+    order_m: int = 10
     order_f: int = 10
 
-    tolerance: float = 1e-16
-    approximation: prop.ApproximationBasis = prop.ApproximationBasis.CHEBYSHEV
+    tolerance: float = 1e-5
+    approximation: prop.ApproximationBasis = prop.ApproximationBasis.NEWTONIAN
 
     # Propagate the wavefunction (timed).
     time_start: float = time.time()
