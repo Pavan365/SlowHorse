@@ -375,7 +375,9 @@ def rescale_matrix(
     """
 
     # Get the eigenvalues.
-    eigenvalues: sim.RVector = np.sort(np.linalg.eigvalsh(matrix)).astype(np.float64, copy=False)
+    eigenvalues: sim.RVector = np.sort(np.linalg.eigvalsh(matrix)).astype(
+        np.float64, copy=False
+    )
     eigenvalues_min: float = eigenvalues[0]
     eigenvalues_max: float = eigenvalues[-1]
 
